@@ -25,3 +25,14 @@ ITEM_CABLE_COIL,Бухта медного кабеля,Copper cable coil
 ITEM_FRIDGE,Холодильник,Refrigerator
 ITEM_WASHING_MACHINE,Стиральная машина,Washing machine
 ITEM_SAMOVAR,Латунный самовар,Brass samovar
+JUNK_BAG,Мешок с мусором,Rubbish bag
+JUNK_TIRE,Покрышка,Tyre
+JUNK_MATTRESS,Матрас,Mattress
+JUNK_CARDBOARD,Коробки,Cardboard boxes
+JUNK_BOARDS,Доски,Boards
+JUNK_CONCRETE,Обломок бетона,Concrete chunk
+JUNK_BARREL,Бочка,Barrel
+JUNK_DIRT,Ком земли с хламом,Clod of dirt and junk
+HUD_DIG_HINT,ЛКМ — вытащить,LMB to pull out
+SCENE_DUMP,Этап 3: куча,Stage 3: the heap
+HINT_DUMP,"ЛКМ по куче — вытащить кусок · F фонарь · вещи торчат из мусора · уберёшь опору — поедет завал · F1 отладка","LMB on the heap pulls a piece out · F flashlight · loot sticks out of the junk · remove a support and it slides · F1 debug"

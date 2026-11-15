@@ -15,5 +15,7 @@ metal = 1
 unit_price = 2100
 break_speed = 5.0
 break_loss = 0.8
+dump_cells = Vector3i(1, 2, 1)
+dump_rotation_deg = Vector3(0, 0, 0)
 impact_sound = &"metal_ring"
 break_sound = &""

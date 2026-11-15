@@ -3,7 +3,7 @@ extends Resource
 ## Описание предмета свалки: вес, цена, кто может нести. Все числа — стартовые,
 ## правятся в .tres без кода.
 
-enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRANGE }
+enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRANGE, TRASH }
 
 @export var id: StringName = &""
 ## Ключ перевода названия (locale/strings.csv)
@@ -23,6 +23,11 @@ enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRA
 @export var break_speed: float = 0.0
 ## Какая доля цены теряется при полном разбитии (0.7 = -70%)
 @export_range(0.0, 1.0) var break_loss: float = 0.0
+@export_group("В куче")
+## Сколько ячеек решётки свалки занимает вещь, пока закопана (x, y, z)
+@export var dump_cells: Vector3i = Vector3i(1, 1, 1)
+## Как вещь лежит в куче: поворот в градусах (x, y, z)
+@export var dump_rotation_deg: Vector3 = Vector3.ZERO
 @export_group("Звук")
 ## Звук удара: имя из assets/audio/sfx (metal_heavy, metal_hollow, metal_ring, plastic, soft, wood)
 @export var impact_sound: StringName = &"metal_heavy"
@@ -32,6 +37,11 @@ enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRA
 
 func random_mass(rng: RandomNumberGenerator) -> float:
 	return rng.randf_range(mass_min_kg, mass_max_kg)
+
+
+## Мусор, который ничего не стоит (куски кучи).
+func is_trash() -> bool:
+	return metal == Metal.TRASH and unit_price == 0
 
 
 func is_fragile() -> bool:

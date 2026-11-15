@@ -40,7 +40,7 @@ extends Resource
 @export var eye_drop: float = 0.2
 @export var crouch_lerp_speed: float = 10.0
 ## Высота ступеньки, на которую заходим без прыжка
-@export var step_height: float = 0.36
+@export var step_height: float = 0.42
 @export var floor_max_angle_deg: float = 46.0
 ## Сила, с которой расталкиваем предметы, Н
 @export var push_force: float = 260.0
@@ -113,3 +113,8 @@ extends Resource
 @export var landing_dip_max: float = 0.45
 @export var landing_spring: float = 120.0
 @export var landing_damping: float = 16.0
+@export_group("Фонарь")
+@export var flashlight_energy: float = 5.0
+@export var flashlight_range: float = 22.0
+## Половина угла луча, градусы
+@export var flashlight_angle_deg: float = 26.0

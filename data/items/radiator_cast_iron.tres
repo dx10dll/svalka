@@ -12,5 +12,7 @@ mass_min_kg = 70.0
 mass_max_kg = 70.0
 carriers = 2
 metal = 4
+dump_cells = Vector3i(1, 1, 1)
+dump_rotation_deg = Vector3(-90, 0, 0)
 impact_sound = &"metal_heavy"
 break_sound = &""

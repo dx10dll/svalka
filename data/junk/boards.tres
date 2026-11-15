@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/junk/boards.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"boards"
+name_key = "JUNK_BOARDS"
+model = ExtResource("2")
+mass_min_kg = 9.6
+mass_max_kg = 14.4
+carriers = 1
+metal = 8
+impact_sound = &"wood"

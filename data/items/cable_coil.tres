@@ -15,5 +15,7 @@ metal = 0
 unit_price = 0
 break_speed = 0.0
 break_loss = 0.0
+dump_cells = Vector3i(1, 1, 1)
+dump_rotation_deg = Vector3(0, 0, 0)
 impact_sound = &"soft"
 break_sound = &""

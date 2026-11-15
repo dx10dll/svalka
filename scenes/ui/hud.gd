@@ -53,8 +53,14 @@ func _process(_delta: float) -> void:
 	if _grab == null:
 		return
 	var target: RigidBody3D = _grab.held if _grab.held != null else _grab.focus
-	_dot.color = Color(1.0, 0.75, 0.35) if target != null else Color(1, 1, 1, 0.55)
-	_info.text = _describe(target) if target != null and is_instance_valid(target) else ""
+	_dot.color = Color(1.0, 0.75, 0.35) if target != null or _grab.focus_dump != null else Color(1, 1, 1, 0.55)
+	if target != null and is_instance_valid(target):
+		_info.text = _describe(target)
+	elif _grab.focus_dump != null:
+		var junk: ItemData = _grab.focus_dump.junk_at(_grab.focus_cell)
+		_info.text = (tr(junk.name_key) + "\n" if junk != null else "") + tr("HUD_DIG_HINT")
+	else:
+		_info.text = ""
 	_charge.visible = _grab.throw_charge > 0.02
 	_charge.value = _grab.throw_charge
 
@@ -65,7 +71,7 @@ func _describe(body: RigidBody3D) -> String:
 	if item != null and item.data != null:
 		parts.append(tr(item.data.name_key))
 	parts.append(Fmt.kg(body.mass))
-	if item != null and item.data != null:
+	if item != null and item.data != null and not item.data.is_trash():
 		parts.append(Fmt.rub(item.value()))
 	var line: String = " · ".join(parts)
 	if not _grab.can_lift(body.mass):

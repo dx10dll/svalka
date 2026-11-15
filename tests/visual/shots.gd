@@ -4,6 +4,7 @@ extends Node
 ## Запуск (нужен экран, в облаке — xvfb):
 ##   godot --path . res://tests/visual/shots.tscn -- --out=папка [--only=имя]
 
+const DUMP_SCENE: String = "res://scenes/debug/playground_dump.tscn"
 const PLAYGROUND: String = "res://scenes/debug/playground_stage1.tscn"
 
 var _player: PlayerController
@@ -21,7 +22,7 @@ func _ready() -> void:
 		elif arg.begins_with("--only="):
 			_only = arg.trim_prefix("--only=")
 	DirAccess.make_dir_recursive_absolute(_out)
-	var scene: Node = (load(PLAYGROUND) as PackedScene).instantiate()
+	var scene: Node = (load(DUMP_SCENE if _only == "dump" else PLAYGROUND) as PackedScene).instantiate()
 	add_child(scene)
 	_player = scene.find_child("Player", true, false)
 	_player.scripted_input = _input
@@ -34,6 +35,10 @@ func _ready() -> void:
 
 func _run() -> void:
 	await _wait(0.3)
+	if _only == "dump":
+		await _run_dump()
+		get_tree().quit()
+		return
 	if _want("stand"):
 		await _third_person(Vector3(0, 0.05, 2), 0.0, Vector3(1.6, 1.0, -0.4))
 		await _snap("stand")
@@ -147,6 +152,98 @@ func _run() -> void:
 		await _snap("first_person")
 		_input.move = Vector2.ZERO
 	get_tree().quit()
+
+
+## Куча: общий вид, раскопка руками, вещь в мусоре, завал до и после.
+func _run_dump() -> void:
+	var dump: Dump = find_child("Dump", true, false)
+	var f: DumpField = dump.field
+	var r: float = dump.config.radius
+	await _third_person(Vector3(0, 0.05, r + 0.2), 0.0, Vector3(3.5, 2.2, 6.0))
+	await _snap("dump_overview")
+	# раскопка руками: навелись на кучу, вытащили кусок
+	await _place(Vector3(0.4, 0.05, r + 0.1), 0.0)
+	_first_person()
+	_input.flashlight_pressed = true
+	await get_tree().physics_frame
+	_input.flashlight_pressed = false
+	_player.pitch = -0.3
+	await _wait(0.3)
+	await _snap("dump_aim")
+	_input.grab_held = true
+	await _wait(0.9)
+	_player.pitch = -0.1
+	await _wait(0.6)
+	await _snap("dump_piece_in_hands")
+	_player.yaw = 2.4
+	await _wait(0.4)
+	_input.throw_held = true
+	await _wait(0.5)
+	_input.throw_held = false
+	_input.grab_held = false
+	await _wait(0.2)
+	# завал: выдёргиваем кусок из-под столбика на склоне
+	var target := Dump.NO_CELL
+	var best: int = 0
+	for x: int in f.size.x:
+		for z: int in f.size.z:
+			for y: int in range(1, 6):
+				var c := Vector3i(x, y, z)
+				if f.at(c) <= 0 or not f.is_exposed(c) or f.cell_base(c).z < 3.0:
+					continue
+				var above: int = 0
+				while f.at(c + Vector3i.UP * (above + 1)) != 0:
+					above += 1
+				if above > best and above <= 9 and absf(f.cell_base(c).x) < 5.0:
+					best = above
+					target = c
+	var at: Vector3 = f.cell_base(target)
+	print("Завал: ячейка ", target, ", над ней ", best)
+	await _third_person(Vector3(at.x - 2.5, 0.05, 13.5), 0.0, Vector3.ZERO, false)
+	_cam.global_position = at + Vector3(1.8, 1.4, 3.6)
+	_cam.look_at(at + Vector3.UP * 0.7)
+	var lamp := OmniLight3D.new()   # подсветка места завала для снимка
+	lamp.light_color = Color(1.0, 0.8, 0.55)
+	lamp.light_energy = 3.0
+	lamp.omni_range = 9.0
+	add_child(lamp)
+	lamp.global_position = at + Vector3(-1.0, 2.2, 3.0)
+	await _wait(0.3)
+	await _snap("collapse_before")
+	# копаем вглубь склона на три ячейки: над ямой остаётся всё больше мусора
+	for step: int in 3:
+		for side: int in [-1, 0, 1]:
+			var pulled: Item = dump.dig(target + Vector3i.FORWARD * step + Vector3i.RIGHT * side)
+			if pulled != null:
+				pulled.apply_central_impulse(Vector3(side * 2.0, 1, 5) * pulled.mass)
+	await _wait(dump.config.warning_time * 0.6)
+	await _snap("collapse_warning")
+	await _wait(dump.config.warning_time * 0.4 + 0.3)
+	await _snap("collapse_falling")
+	await _wait(0.4)
+	await _snap("collapse_falling")
+	await _wait(1.2)
+	await _snap("collapse_settling")
+	await _wait(7.0)
+	await _snap("collapse_after")
+	# вещь, торчащая из кучи
+	var nearest: Item = null
+	for item: Item in dump._site_nodes.values():
+		if item.has_meta(&"dump_site") and item.global_position.y < 2.0 and item.global_position.z > 0.0 \
+				and (nearest == null or item.global_position.z > nearest.global_position.z):
+			nearest = item
+	if nearest != null:
+		_cam.global_position = nearest.global_position + Vector3(1.2, 1.3, 3.2)
+		_cam.look_at(nearest.global_position + Vector3.UP * 0.3)
+		nearest.set_highlight(true)
+		await _wait(0.2)
+		await _snap("loot_in_heap")
+	# тёмная сторона кучи с фонарём
+	await _place(Vector3(0.0, 0.05, -r - 1.2), PI)
+	_first_person()
+	_player.pitch = 0.15
+	await _wait(0.3)
+	await _snap("flashlight")
 
 
 func _find_item(id: StringName) -> Item:

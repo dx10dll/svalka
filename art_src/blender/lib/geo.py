@@ -62,7 +62,8 @@ class Builder:
 
     def cylinder(self, radius: float, depth: float, center: tuple[float, float, float],
                  color: str, axis: str = "Z", segments: int = 8, bevel: float = 0.0,
-                 radius_top: float | None = None, cap_color: str | None = None) -> list[bmesh.types.BMFace]:
+                 radius_top: float | None = None, cap_color: str | None = None,
+                 rotation: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> list[bmesh.types.BMFace]:
         """Цилиндр (или усечённый конус) вдоль оси axis."""
         r2 = radius if radius_top is None else radius_top
         res = bmesh.ops.create_cone(self.bm, cap_ends=True, cap_tris=False, segments=segments,
@@ -71,12 +72,14 @@ class Builder:
         rot = {"Z": Matrix.Identity(4),
                "X": Matrix.Rotation(math.radians(90), 4, "Y"),
                "Y": Matrix.Rotation(math.radians(90), 4, "X")}[axis]
-        bmesh.ops.transform(self.bm, matrix=Matrix.Translation(center) @ rot, verts=verts)
+        bmesh.ops.transform(self.bm, matrix=rot, verts=verts)
         faces = list({f for v in verts for f in v.link_faces})
         self._paint(faces, color)
         if cap_color:
+            self.bm.normal_update()
             ax = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}[axis]
             self._paint([f for f in faces if abs(f.normal.dot(ax)) > 0.99], cap_color)
+        bmesh.ops.transform(self.bm, matrix=Matrix.Translation(center) @ _euler(rotation), verts=verts)
         return self._bevel(faces, bevel, 1)
 
     def chip_faces(self, faces: list[bmesh.types.BMFace], color: str, share: float, seed: int,

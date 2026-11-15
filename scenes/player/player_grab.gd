@@ -19,6 +19,9 @@ const AIM_SPREAD: Array[Vector2] = [
 var held: RigidBody3D
 ## На что смотрим (можно взять)
 var focus: RigidBody3D
+## Куча и её ячейка под прицелом (можно вытащить кусок), если focus пуст
+var focus_dump: Dump
+var focus_cell: Vector3i = Dump.NO_CELL
 ## Заряд броска 0..1
 var throw_charge: float = 0.0
 ## Насколько предмет отстал от точки удержания, м (для рук и «поводка»)
@@ -33,6 +36,7 @@ var _was_throw_held: bool = false
 var _overstretch_time: float = 0.0
 var _saved_can_sleep: bool = true
 var _outlined: Item
+var _dump_point := Vector3.ZERO
 
 
 func setup(player: PlayerController) -> void:
@@ -83,8 +87,16 @@ func tick(input: PlayerInput, delta: float) -> void:
 	_update_highlight()
 	if held == null:
 		throw_charge = 0.0
-		if input.grab_held and not _was_grab_held and focus != null:
-			_grab(focus)
+		if input.grab_held and not _was_grab_held:
+			if focus != null:
+				if focus.has_meta(&"dump_site"):
+					(focus.get_parent() as Dump).release_site(focus as Item)
+				_grab(focus)
+			elif focus_dump != null:
+				var piece: Item = focus_dump.dig(focus_cell)
+				if piece != null:
+					piece.set_meta(&"aim_point", _dump_point)
+					_grab(piece)
 	else:
 		if not input.grab_held:
 			release(false)
@@ -109,6 +121,8 @@ func _update_highlight() -> void:
 
 func _update_focus() -> void:
 	focus = null
+	focus_dump = null
+	focus_cell = Dump.NO_CELL
 	if held != null:
 		return
 	# Прицел «с допуском»: сначала точно по центру, потом четыре луча рядом —
@@ -125,10 +139,19 @@ func _update_focus() -> void:
 		if hit.is_empty():
 			continue
 		var body: RigidBody3D = hit["collider"] as RigidBody3D
-		if body != null and not body.freeze:
+		if body != null and (not body.freeze or body.has_meta(&"dump_site")):
 			focus = body
 			focus.set_meta(&"aim_point", hit["position"])
+			focus_dump = null
 			return
+		# куча: запоминаем первый попавший луч, но вещь рядом важнее мусора
+		if focus_dump == null and hit["collider"] is StaticBody3D and (hit["collider"] as Node).get_parent() is Dump:
+			var dump: Dump = (hit["collider"] as Node).get_parent()
+			var cell: Vector3i = dump.cell_from_hit(hit["collider"], hit["shape"])
+			if cell != Dump.NO_CELL:
+				focus_dump = dump
+				focus_cell = cell
+				_dump_point = hit["position"]
 
 
 func _grab(body: RigidBody3D) -> void:

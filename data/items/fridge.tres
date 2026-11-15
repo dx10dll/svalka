@@ -15,5 +15,7 @@ metal = 4
 unit_price = 0
 break_speed = 0.0
 break_loss = 0.0
+dump_cells = Vector3i(1, 2, 2)
+dump_rotation_deg = Vector3(-90, 0, 0)
 impact_sound = &"metal_hollow"
 break_sound = &""

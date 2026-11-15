@@ -15,5 +15,7 @@ metal = 5
 unit_price = 1800
 break_speed = 4.0
 break_loss = 0.7
+dump_cells = Vector3i(1, 2, 1)
+dump_rotation_deg = Vector3(0, 0, 0)
 impact_sound = &"plastic"
 break_sound = &"glass_break"

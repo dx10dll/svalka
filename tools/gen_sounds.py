@@ -133,6 +133,30 @@ def build() -> None:
     save("whoosh_1", finish(sweep, attack=0.03, peak=0.6))
     save("grab_1", finish(mix(noise(0.07, 0.014, rng, 0.05, 0.4), 0.5 * modes(0.08, [(210, 1.0, 0.02)], rng)),
                           attack=0.004, peak=0.5))
+    # куча предупреждает: скрип «залипает и срывается», высота плывёт
+    for i in range(2):
+        rng = np.random.default_rng(500 + i)
+        t = _t(1.0)
+        freq = 150 + 60 * i + 90 * np.sin(2 * np.pi * (0.7 + 0.3 * i) * t) + 40 * rng.standard_normal(t.size).cumsum() / 60
+        phase = 2 * np.pi * np.cumsum(freq) / RATE
+        saw = 2 * ((phase / (2 * np.pi)) % 1.0) - 1
+        slip = (np.sin(2 * np.pi * (9 + 3 * i) * t + 3 * np.sin(2 * np.pi * 1.3 * t)) > -0.2).astype(float)
+        env = np.sin(np.pi * t / 1.0) ** 0.6
+        save(f"creak_{i + 1}", finish(mix(saw * slip * env, 0.5 * noise(1.0, 0.5, rng, 0.02, 0.2) * env),
+                                      attack=0.02, peak=0.6))
+    # завал: долгий низкий грохот с россыпью ударов
+    for i in range(2):
+        rng = np.random.default_rng(600 + i)
+        t = _t(2.2)
+        body = noise(2.2, 0.7, rng, 0.0, 0.08) * (1 - np.exp(-t / 0.05))
+        hits = np.zeros_like(t)
+        for _ in range(14):
+            start = int(rng.uniform(0.0, 1.2) * RATE)
+            seg = modes(0.3, [(rng.uniform(60, 220), 1.0, rng.uniform(0.04, 0.1))], rng) \
+                + 0.6 * noise(0.3, 0.03, rng, 0.0, 0.3)
+            end = min(start + seg.size, hits.size)
+            hits[start:end] += seg[: end - start] * rng.uniform(0.3, 1.0)
+        save(f"rumble_{i + 1}", finish(mix(2.0 * body, hits), attack=0.01))
     print("Звуков:", len(list(OUT.glob("*.wav"))))
 
 

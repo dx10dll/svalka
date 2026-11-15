@@ -15,3 +15,5 @@ var flop_pressed: bool = false
 var grab_held: bool = false
 ## Заряжаем бросок (ПКМ зажата), бросок по отпусканию
 var throw_held: bool = false
+## Включить или выключить фонарь (клавиша F)
+var flashlight_pressed: bool = false

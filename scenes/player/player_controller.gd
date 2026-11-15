@@ -15,6 +15,7 @@ signal knocked_down(impact_speed: float)
 signal getup_started(duration: float)
 signal got_up
 signal footstep(speed: float)
+signal flashlight_toggled(on: bool)
 
 enum Mode { NORMAL, MANTLE, DOWNED }
 
@@ -30,6 +31,8 @@ var pitch: float = 0.0
 var height: float = 1.8
 var crouching: bool = false
 var sprinting: bool = false
+## Горит ли фонарь (есть у каждого с начала)
+var flashlight_on: bool = false
 ## Фаза шагов в циклах (1.0 = два шага): по ней идут качание камеры, звуки и анимация ног
 var stride_phase: float = 0.0
 ## Смещение картинки вниз после захода на ступеньку, плавно уходит в 0
@@ -116,6 +119,9 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	_input = scripted_input if scripted_input != null else _reader.sample()
 	grab.tick(_input, delta)
+	if _input.flashlight_pressed:
+		flashlight_on = not flashlight_on
+		flashlight_toggled.emit(flashlight_on)
 	match mode:
 		Mode.NORMAL:
 			_tick_normal(delta)

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="DumpConfig" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/dump_config.gd" id="1"]
+[ext_resource type="Resource" path="res://data/junk/bag_black.tres" id="j0"]
+[ext_resource type="Resource" path="res://data/junk/bag_blue.tres" id="j1"]
+[ext_resource type="Resource" path="res://data/junk/bag_white.tres" id="j2"]
+[ext_resource type="Resource" path="res://data/junk/tire.tres" id="j3"]
+[ext_resource type="Resource" path="res://data/junk/mattress.tres" id="j4"]
+[ext_resource type="Resource" path="res://data/junk/cardboard.tres" id="j5"]
+[ext_resource type="Resource" path="res://data/junk/boards.tres" id="j6"]
+[ext_resource type="Resource" path="res://data/junk/concrete.tres" id="j7"]
+[ext_resource type="Resource" path="res://data/junk/barrel.tres" id="j8"]
+[ext_resource type="Resource" path="res://data/junk/dirt_clod_1.tres" id="j9"]
+[ext_resource type="Resource" path="res://data/junk/dirt_clod_2.tres" id="j10"]
+[ext_resource type="Resource" path="res://data/items/cable_coil.tres" id="l0"]
+[ext_resource type="Resource" path="res://data/items/tv_crt.tres" id="l1"]
+[ext_resource type="Resource" path="res://data/items/samovar.tres" id="l2"]
+[ext_resource type="Resource" path="res://data/items/washing_machine.tres" id="l3"]
+[ext_resource type="Resource" path="res://data/items/fridge.tres" id="l4"]
+[ext_resource type="Resource" path="res://data/items/radiator_cast_iron.tres" id="l5"]
+
+[resource]
+script = ExtResource("1")
+junk = Array[Resource("res://scripts/data/item_data.gd")]([ExtResource("j0"), ExtResource("j1"), ExtResource("j2"), ExtResource("j3"), ExtResource("j4"), ExtResource("j5"), ExtResource("j6"), ExtResource("j7"), ExtResource("j8"), ExtResource("j9"), ExtResource("j10")])
+junk_weight_top = PackedFloat32Array(3, 1.2, 1.2, 0.7, 0.6, 1.6, 0.8, 0.3, 0.25, 1.2, 1.0)
+junk_weight_deep = PackedFloat32Array(0.5, 0.2, 0.2, 0.6, 0.3, 0.2, 1.0, 1.6, 0.5, 3.0, 3.0)
+loot = Array[Resource("res://scripts/data/item_data.gd")]([ExtResource("l0"), ExtResource("l1"), ExtResource("l2"), ExtResource("l3"), ExtResource("l4"), ExtResource("l5")])
+loot_weight_top = PackedFloat32Array(1.0, 1.5, 0.3, 1.0, 0.8, 0.4)
+loot_weight_deep = PackedFloat32Array(1.5, 0.6, 1.0, 0.8, 1.0, 1.5)

@@ -23,6 +23,8 @@ var _rag_basis_offset := Basis.IDENTITY
 var _rag_eye_local := Vector3.ZERO
 var _rag_basis_smooth := Basis.IDENTITY
 var _mantle_kick: float = 0.0
+var _shake: float = 0.0
+var _flashlight: SpotLight3D
 
 
 func setup(player: PlayerController) -> void:
@@ -36,6 +38,23 @@ func setup(player: PlayerController) -> void:
 	camera.far = 400.0
 	add_child(camera)
 	camera.make_current()
+	add_to_group(&"player_cameras")
+	# фонарь: узкий тёплый луч чуть ниже и правее глаз, чтобы тени читались
+	_flashlight = SpotLight3D.new()
+	_flashlight.light_color = Color(1.0, 0.93, 0.78)
+	_flashlight.light_energy = _feel.flashlight_energy
+	_flashlight.spot_range = _feel.flashlight_range
+	_flashlight.spot_angle = _feel.flashlight_angle_deg
+	_flashlight.spot_angle_attenuation = 0.6
+	_flashlight.spot_attenuation = 1.2
+	_flashlight.shadow_enabled = true
+	_flashlight.light_volumetric_fog_energy = 1.5
+	_flashlight.position = Vector3(0.14, -0.16, -0.05)
+	_flashlight.visible = player.flashlight_on
+	camera.add_child(_flashlight)
+	player.flashlight_toggled.connect(func(on: bool) -> void:
+		_flashlight.visible = on
+		Audio.play_at(&"grab", global_position, -10.0, 1.6))
 	_eye_height = player.eye_height()
 	player.landed.connect(_on_landed)
 	player.jumped.connect(func() -> void: _dip_velocity += 0.9)
@@ -94,12 +113,25 @@ func _process(delta: float) -> void:
 		basis_n = basis_n.slerp(_rag_basis_smooth, down).orthonormalized()
 	else:
 		_has_ragdoll_view = false
+	# дрожь (завал рядом): быстро гаснет, сила — квадрат «встряски»
+	_shake = maxf(_shake - delta * 1.4, 0.0)
+	if _shake > 0.0:
+		var s: float = _shake * _shake
+		pos += Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), 0.0) * s * 0.035
+		basis_n = basis_n * Basis.from_euler(Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0),
+				randf_range(-1.0, 1.0)) * s * 0.02)
 	global_position = pos
 	global_basis = basis_n
 
 	var fov_target: float = _feel.sprint_fov_add if _player.sprinting else 0.0
 	_fov_add = lerpf(_fov_add, fov_target, 1.0 - exp(-6.0 * delta))
 	camera.fov = _feel.fov + _fov_add
+
+
+## Встряхнуть камеру от события в точке мира (чем дальше, тем слабее; дальше 16 м не чувствуется).
+func shake_from(point: Vector3, strength: float) -> void:
+	var k: float = clampf(1.0 - global_position.distance_to(point) / 16.0, 0.0, 1.0)
+	_shake = minf(maxf(_shake, strength * k), 1.0)
 
 
 func _on_landed(impact: float) -> void:
