@@ -39,9 +39,11 @@ func _run() -> void:
 	_aim_at(coil)
 	await _wait(0.1)
 	_check(_player.grab.focus == coil, "бухта под прицелом")
+	_check(coil.find_child("mesh", true, false).material_overlay != null, "предмет под прицелом обведён")
 	_input.grab_held = true
 	await _wait(1.2)
 	_check(_player.grab.held == coil, "бухта в руках")
+	_check(coil.find_child("mesh", true, false).material_overlay == null, "в руках обводка снята")
 	_player.pitch = 0.0
 	await _wait(1.0)
 	_check(coil.global_position.y > 0.45, "бухта поднята на %.2f м" % coil.global_position.y)
@@ -120,7 +122,39 @@ func _run() -> void:
 	_check(tv.value() < full, "цена упала до %d ₽" % tv.value())
 	_check(_losses.size() >= 1 and _losses[0] > 0, "о потере сообщили: %s" % [_losses])
 
-	# 5. формат денег
+	# 5. крупная техника и антиквариат
+	var sounds_before: int = Audio.played_count
+	await _place(Vector3(20, 0.05, 0))
+	var fridge: Item = _spawn("fridge", Vector3(20, 0.02, -1.2))
+	await _wait(0.8)
+	_check(fridge.global_basis.y.y > 0.95, "холодильник стоит и не падает сам")
+	_aim_at(fridge)
+	await _wait(0.1)
+	_input.grab_held = true
+	await _wait(0.6)
+	_check(_player.grab.held == fridge and not _player.grab.can_lift(fridge.mass), "холодильник (60 кг) одному только волоком")
+	_input.move = Vector2(0, -1)
+	var fridge_from: Vector3 = fridge.global_position
+	await _wait(3.0)
+	_input.move = Vector2.ZERO
+	_check(fridge.global_position.distance_to(fridge_from) > 0.8,
+			"холодильник протащили на %.1f м за 3 с" % fridge.global_position.distance_to(fridge_from))
+	_input.grab_held = false
+	await _wait(0.3)
+	fridge.queue_free()
+	await _place(Vector3(-20, 0.05, 0))
+	var samovar: Item = _spawn("samovar", Vector3(-20, 0.02, -1.0))
+	await _wait(0.8)
+	_check(samovar.value() == 2100 and samovar.scrap_value() == 420,
+			"целый самовар %d ₽, ломом %d ₽" % [samovar.value(), samovar.scrap_value()])
+	samovar.global_position = Vector3(-20, 7.0, -1.5)
+	samovar.linear_velocity = Vector3.ZERO
+	await _wait(2.2)
+	_check(samovar.integrity < 1.0 and samovar.value() < 2100, "самовар помялся от падения: %d ₽" % samovar.value())
+	_check(samovar.value() >= samovar.scrap_value(), "помятый самовар не дешевле лома")
+	_check(Audio.played_count > sounds_before, "удары и шаги звучат (%d звуков)" % (Audio.played_count - sounds_before))
+
+	# 6. формат денег
 	_check(Fmt.rub(-1200) == "−1 200 ₽", "формат суммы: " + Fmt.rub(-1200))
 	_check(Fmt.rub(23000) == "23 000 ₽", "формат суммы: " + Fmt.rub(23000))
 

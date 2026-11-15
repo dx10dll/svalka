@@ -55,6 +55,12 @@ func _populate() -> void:
 	_spawn(load("res://data/items/tv_crt.tres"), Transform3D(Basis(Vector3.UP, 2.8), Vector3(0.3, 0.02, -1.6)))
 	_spawn(load("res://data/items/tv_crt.tres"), Transform3D(Basis(Vector3.UP, 3.4), Vector3(-0.5, 1.02, -6.2)))
 
+	# крупная техника (вдвоём или волоком) и хрупкий антиквариат
+	_spawn(load("res://data/items/fridge.tres"), Transform3D(Basis(Vector3.UP, 2.6), Vector3(-3.4, 0.02, -0.4)))
+	_spawn(load("res://data/items/washing_machine.tres"), Transform3D(Basis(Vector3.UP, 3.5), Vector3(4.4, 0.02, 2.8)))
+	_spawn(load("res://data/items/samovar.tres"), Transform3D(Basis(Vector3.UP, 0.3), Vector3(0.9, 0.02, 0.3)))
+	_spawn(load("res://data/items/samovar.tres"), Transform3D(Basis(Vector3.UP, 2.0), Vector3(2.8, 1.22, -3.1)))
+
 	_player = (load(PLAYER_SCENE) as PackedScene).instantiate()
 	_player.position = Vector3(0.0, 0.05, 2.0)
 	add_child(_player)
@@ -67,6 +73,7 @@ func _add_crate(model: PackedScene, at: Vector3, size: float, mass: float) -> vo
 	if mass > 0.0:
 		var rb := RigidBody3D.new()
 		rb.mass = mass
+		rb.add_child(ImpactSound.new())  # стук дерева
 		body = rb
 	else:
 		body = StaticBody3D.new()

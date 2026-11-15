@@ -32,6 +32,7 @@ var _was_grab_held: bool = false
 var _was_throw_held: bool = false
 var _overstretch_time: float = 0.0
 var _saved_can_sleep: bool = true
+var _outlined: Item
 
 
 func setup(player: PlayerController) -> void:
@@ -75,9 +76,11 @@ func tick(input: PlayerInput, delta: float) -> void:
 	if _player.mode != PlayerController.Mode.NORMAL:
 		release(false)
 		focus = null
+		_update_highlight()
 		_was_grab_held = input.grab_held
 		return
 	_update_focus()
+	_update_highlight()
 	if held == null:
 		throw_charge = 0.0
 		if input.grab_held and not _was_grab_held and focus != null:
@@ -90,6 +93,18 @@ func tick(input: PlayerInput, delta: float) -> void:
 			_update_throw(input, delta)
 	_was_grab_held = input.grab_held
 	_was_throw_held = input.throw_held
+
+
+## Обводка на предмете под прицелом.
+func _update_highlight() -> void:
+	var want: Item = focus as Item
+	if want == _outlined:
+		return
+	if is_instance_valid(_outlined):
+		_outlined.set_highlight(false)
+	_outlined = want
+	if _outlined != null:
+		_outlined.set_highlight(true)
 
 
 func _update_focus() -> void:
@@ -129,6 +144,7 @@ func _grab(body: RigidBody3D) -> void:
 	_overstretch_time = 0.0
 	throw_charge = 0.0
 	focus = null
+	Audio.play_at(&"grab", point, -8.0)
 	grabbed.emit(body)
 
 
@@ -201,9 +217,11 @@ func _update_throw(input: PlayerInput, delta: float) -> void:
 		throw_charge = minf(throw_charge + delta / _feel.throw_charge_time, 1.0)
 	elif _was_throw_held and throw_charge > 0.08:
 		var body: RigidBody3D = held
+		var throw_charge_was: float = throw_charge
 		var dir: Vector3 = (look_dir() + Vector3.UP * _feel.throw_up_bias).normalized()
 		var speed: float = minf(_feel.throw_impulse * throw_charge / body.mass, _feel.throw_max_speed)
 		release(true)
+		Audio.play_at(&"whoosh", eye(), lerpf(-12.0, -3.0, throw_charge_was), lerpf(0.85, 1.2, throw_charge_was))
 		body.apply_central_impulse(dir * speed * body.mass)
 		body.apply_torque_impulse(Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1))
 				* body.mass * 0.05 * speed)

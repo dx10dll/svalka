@@ -23,6 +23,11 @@ enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRA
 @export var break_speed: float = 0.0
 ## Какая доля цены теряется при полном разбитии (0.7 = -70%)
 @export_range(0.0, 1.0) var break_loss: float = 0.0
+@export_group("Звук")
+## Звук удара: имя из assets/audio/sfx (metal_heavy, metal_hollow, metal_ring, plastic, soft, wood)
+@export var impact_sound: StringName = &"metal_heavy"
+## Звук, когда хрупкая вещь разбилась окончательно (пусто — нет)
+@export var break_sound: StringName = &""
 
 
 func random_mass(rng: RandomNumberGenerator) -> float:

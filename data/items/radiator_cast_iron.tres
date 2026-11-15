@@ -12,3 +12,5 @@ mass_min_kg = 70.0
 mass_max_kg = 70.0
 carriers = 2
 metal = 4
+impact_sound = &"metal_heavy"
+break_sound = &""

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/items/samovar.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"samovar"
+name_key = "ITEM_SAMOVAR"
+model = ExtResource("2")
+mass_min_kg = 6.0
+mass_max_kg = 6.0
+carriers = 1
+metal = 1
+unit_price = 2100
+break_speed = 5.0
+break_loss = 0.8
+impact_sound = &"metal_ring"
+break_sound = &""

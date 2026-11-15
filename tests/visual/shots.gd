@@ -104,6 +104,35 @@ func _run() -> void:
 		_input.move = Vector2.ZERO
 		_input.grab_held = false
 		await _wait(0.3)
+	if _want("items"):
+		# новые предметы: общий вид, обводка под прицелом, холодильник волоком
+		await _place(Vector3(0.6, 0.05, 2.6), 0.0)
+		_cam.global_position = Vector3(0.4, 1.5, 4.6)
+		_cam.make_current()
+		_cam.look_at(Vector3(0.4, 0.5, -0.5))
+		_player.body.set_first_person(false)
+		await _snap("items_overview")
+		var samovar: Item = _find_item(&"samovar")
+		await _place(samovar.global_position + Vector3(0, 0.05, 1.0), 0.0)
+		var to: Vector3 = samovar.global_position + Vector3.UP * 0.2 - _player.grab.eye()
+		_player.pitch = atan2(to.y, Vector2(to.x, to.z).length())
+		_first_person()
+		await _wait(0.3)
+		await _snap("samovar_outline")
+		await _take(samovar)
+		await _snap("samovar_first_person")
+		_input.grab_held = false
+		await _wait(0.4)
+		var fridge: Item = _find_item(&"fridge")
+		await _third_person(fridge.global_position + Vector3(0.3, 0.05, 1.3), 0.0, Vector3(1.9, 1.0, 0.6))
+		await _take(fridge)
+		_input.move = Vector2(0, -1)
+		await _wait(0.9)
+		_follow(Vector3(2.1, 1.0, -0.4))
+		await _snap("drag_fridge")
+		_input.move = Vector2.ZERO
+		_input.grab_held = false
+		await _wait(0.3)
 	if _want("fp"):
 		# вид от первого лица: взгляд вниз на свои руки и ноги
 		await _place(Vector3(0, 0.05, 2), 0.0)

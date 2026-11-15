@@ -74,6 +74,8 @@ func _test_items_load() -> void:
 		_check(node.grips.size() >= 1, "у предмета %s есть точки хвата" % it.id)
 		_check(node.find_children("col_*", "MeshInstance3D", true, false).is_empty(),
 				"меши коллизий %s не попали в картинку" % it.id)
+		_check(Audio.has_sound(it.impact_sound), "у предмета %s есть звук удара" % it.id)
+		_check(it.break_sound == &"" or Audio.has_sound(it.break_sound), "звук разбития %s существует" % it.id)
 		node.free()
 
 

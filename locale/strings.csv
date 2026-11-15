@@ -22,3 +22,6 @@ HUD_TOO_HEAVY,Одному только волоком,Too heavy alone: drag it
 HUD_GRAB_HINT,ЛКМ — взять,LMB to grab
 ITEM_TV_CRT,Телевизор,CRT television
 ITEM_CABLE_COIL,Бухта медного кабеля,Copper cable coil
+ITEM_FRIDGE,Холодильник,Refrigerator
+ITEM_WASHING_MACHINE,Стиральная машина,Washing machine
+ITEM_SAMOVAR,Латунный самовар,Brass samovar

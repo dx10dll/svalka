@@ -92,6 +92,10 @@ func _ready() -> void:
 	cam.name = "Camera"
 	add_child(cam)
 	cam.setup(self)
+	var sounds := PlayerSounds.new()
+	sounds.name = "Sounds"
+	add_child(sounds)
+	sounds.setup(self)
 	var hud := Hud.new()
 	hud.name = "Hud"
 	add_child(hud)

@@ -10,6 +10,7 @@ signal damaged(loss: int)
 
 ## Удары слабее этого не считаются, м/с
 const MIN_IMPACT: float = 1.2
+const OUTLINE_MATERIAL: String = "res://assets/materials/outline.tres"
 const POPUP_SCENE: String = "res://scenes/ui/world_popup.gd"
 
 @export var data: ItemData
@@ -22,6 +23,7 @@ var integrity: float = 1.0
 var _prev_velocity := Vector3.ZERO
 var _intact_mesh: Node3D
 var _broken_mesh: Node3D
+var _highlighted: bool = false
 
 
 func _ready() -> void:
@@ -64,6 +66,16 @@ func _physics_process(_delta: float) -> void:
 	_prev_velocity = linear_velocity
 
 
+## Обводка, когда игрок навёлся на предмет и может его взять.
+func set_highlight(on: bool) -> void:
+	if on == _highlighted:
+		return
+	_highlighted = on
+	var overlay: Material = load(OUTLINE_MATERIAL) if on else null
+	for mesh: Node in find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).material_overlay = overlay
+
+
 ## Сколько предмет стоит сейчас, ₽ (с учётом целости).
 func value() -> int:
 	var full: int = data.unit_price if data.unit_price > 0 else Quota.scrap_value(Game.economy, data.metal, mass)
@@ -81,7 +93,7 @@ func _on_body_entered(_other: Node) -> void:
 	if impact < MIN_IMPACT:
 		return
 	hit.emit(impact)
-	Audio.play_impact(&"metal", global_position, impact)
+	Audio.play_impact(data.impact_sound if data != null else &"metal_heavy", global_position, impact)
 	if data == null or not data.is_fragile() or integrity <= 0.0 or impact < data.break_speed:
 		return
 	if not Net.is_host():
@@ -90,10 +102,12 @@ func _on_body_entered(_other: Node) -> void:
 	var harm: float = clampf((impact - data.break_speed) / (data.break_speed * 1.5), 0.2, 1.0)
 	integrity = maxf(integrity - harm, 0.0)
 	var loss: int = before - value()
-	if integrity <= 0.0 and _broken_mesh != null:
-		_broken_mesh.visible = true
-		if _intact_mesh != null:
-			_intact_mesh.visible = false
+	if integrity <= 0.0:
+		Audio.play_at(data.break_sound, global_position)
+		if _broken_mesh != null:
+			_broken_mesh.visible = true
+			if _intact_mesh != null:
+				_intact_mesh.visible = false
 	if loss > 0:
 		damaged.emit(loss)
 		WorldPopup.spawn(get_tree().current_scene, global_position + Vector3.UP * 0.5,
