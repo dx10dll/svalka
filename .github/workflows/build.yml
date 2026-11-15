@@ -1,0 +1,63 @@
+# Сборка Windows .exe на каждый пуш в main: импорт, автотесты, экспорт, релиз.
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.7.2
+  GODOT_TAG: 4.7.2-stable
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Скачать Godot и шаблоны экспорта
+        run: |
+          set -e
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_TAG}"
+          curl -fsSL -o godot.zip "${base}/Godot_v${GODOT_TAG}_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "${base}/Godot_v${GODOT_TAG}_export_templates.tpz"
+          unzip -q godot.zip
+          sudo mv "Godot_v${GODOT_TAG}_linux.x86_64" /usr/local/bin/godot
+          dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dir"
+          unzip -q -j templates.tpz 'templates/windows_*x86_64*' 'templates/version.txt' -d "$dir"
+          rm godot.zip templates.tpz
+
+      - name: Импорт проекта
+        run: godot --headless --path . --import
+
+      - name: Автотесты
+        run: godot --headless --path . -s tests/run_tests.gd
+
+      - name: Экспорт Windows
+        run: |
+          set -e
+          version="0.0.${{ github.run_number }}"
+          sed -i "s/^config\/version=.*/config\/version=\"${version}\"/" project.godot
+          mkdir -p build/windows
+          godot --headless --path . --export-release "Windows Desktop" build/windows/cvetmet.exe
+          test -s build/windows/cvetmet.exe
+          cd build/windows && zip -q -r "../cvetmet-windows-${version}.zip" .
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cvetmet-windows-${{ env.VERSION }}
+          path: build/cvetmet-windows-${{ env.VERSION }}.zip
+
+      - name: Релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${VERSION}" "build/cvetmet-windows-${VERSION}.zip" \
+            --title "ЦВЕТМЕТ ${VERSION}" --prerelease \
+            --notes "Автосборка из коммита ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)"

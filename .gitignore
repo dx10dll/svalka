@@ -1,0 +1,10 @@
+# Godot
+.godot/
+/android/
+*.translation
+# сборки
+/build/
+# Blender
+*.blend1
+art_src/previews/.tmp/
+__pycache__/

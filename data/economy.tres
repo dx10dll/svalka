@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EconomyConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/economy_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+quotas_for_four = PackedInt32Array(3000, 5000, 7500, 10500, 14000, 18000, 23000)
+player_multipliers = PackedFloat32Array(0.45, 0.65, 0.85, 1)
+quota_rounding = 50
+price_copper = 120
+price_brass = 70
+price_aluminium = 45
+price_lead = 35
+price_ferrous = 6

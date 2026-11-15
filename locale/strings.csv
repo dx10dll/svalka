@@ -1,0 +1,15 @@
+keys,ru,en
+GAME_TITLE,ЦВЕТМЕТ,SCRAP NIGHT
+ITEM_RADIATOR_CAST_IRON,Чугунная батарея,Cast iron radiator
+DEBUG_TITLE,Отладка (F1),Debug (F1)
+DEBUG_SPAWN,Создать предмет,Spawn item
+DEBUG_TIME,Время ночи,Night time
+DEBUG_GOD,Бессмертие,God mode
+DEBUG_CHUNKS,Показать чанки и опоры,Show chunks and supports
+DEBUG_PING,Пинг (мс),Ping (ms)
+DEBUG_LANG,Язык,Language
+DEBUG_CLEAR,Убрать созданное,Clear spawned
+DEBUG_STATS,"Кадров: %d  Активных тел: %d  Часы: %s","FPS: %d  Active bodies: %d  Clock: %s"
+HINT_TEST_SCENE,"WASD — полёт, мышь — обзор, Shift — быстрее, ЛКМ — толкнуть, F1 — отладка","WASD to fly, mouse to look, Shift for speed, LMB to shove, F1 for debug"
+UNIT_KG,кг,kg
+UNIT_RUB,₽,₽
