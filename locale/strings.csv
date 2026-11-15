@@ -13,3 +13,8 @@ DEBUG_STATS,"Кадров: %d  Активных тел: %d  Часы: %s","FPS: 
 HINT_TEST_SCENE,"WASD — полёт, мышь — обзор, Shift — быстрее, ЛКМ — толкнуть, F1 — отладка","WASD to fly, mouse to look, Shift for speed, LMB to shove, F1 for debug"
 UNIT_KG,кг,kg
 UNIT_RUB,₽,₽
+HINT_PLAYGROUND,"WASD — идти, Shift — бег, Пробел — прыжок, Ctrl — присесть. В прыжке держи W у края ящика, чтобы залезть. F1 — отладка","WASD to move, Shift to run, Space to jump, Ctrl to crouch. Hold W near a crate edge mid-jump to climb. F1 for debug"
+DEBUG_SCENES,Сцены,Scenes
+SCENE_STAGE0,Этап 0: площадка с батареями,Stage 0: radiator yard
+SCENE_STAGE1,Этап 1: горка из ящиков,Stage 1: crate hill
+DEBUG_RESPAWN,Вернуться на старт,Back to start

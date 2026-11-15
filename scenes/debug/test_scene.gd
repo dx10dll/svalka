@@ -6,7 +6,7 @@ extends Node3D
 const MOON_COLOR := Color(0.55, 0.66, 1.0)
 const SODIUM_COLOR := Color(1.0, 0.64, 0.28)
 const DAWN_COLOR := Color(0.86, 0.62, 0.62)
-const GROUND_SIZE := Vector3(40.0, 1.0, 40.0)
+const GROUND_SIZE := Vector3(80.0, 1.0, 80.0)
 
 var _env: Environment
 var _moon: DirectionalLight3D
@@ -19,6 +19,15 @@ func _ready() -> void:
 	_rng.seed = 1995
 	_build_sky_and_light()
 	_build_ground()
+	_populate()
+	DebugMenu.spawn_requested.connect(_on_spawn_requested)
+	DebugMenu.clear_requested.connect(_on_clear_requested)
+	Game.night_time_changed.connect(_apply_night_time)
+	_apply_night_time(Game.night_time)
+
+
+## Наполнение сцены. Наследники (другие тестовые площадки) заменяют его своим.
+func _populate() -> void:
 	_build_lamp(Vector3(2.5, 0.0, -1.5))
 	_camera = FreeCamera.new()
 	_camera.position = Vector3(-2.6, 1.6, 3.4)
@@ -26,18 +35,13 @@ func _ready() -> void:
 	_camera.fov = 75.0
 	add_child(_camera)
 	_camera.make_current()
-	_build_hint()
+	_build_hint("HINT_TEST_SCENE")
 
 	var radiator: ItemData = load("res://data/items/radiator_cast_iron.tres")
 	# одна стоит, одна лежит, одна падает сверху — сразу видно физику и стопку
 	_spawn(radiator, Transform3D(Basis(Vector3.UP, 0.4), Vector3(0.0, 0.02, 0.0)))
 	_spawn(radiator, Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3(1.0, 0.1, 0.6)))
 	_spawn(radiator, Transform3D(Basis(Vector3(1, 0, 1).normalized(), 0.7), Vector3(0.6, 2.4, 0.3)))
-
-	DebugMenu.spawn_requested.connect(_on_spawn_requested)
-	DebugMenu.clear_requested.connect(_on_clear_requested)
-	Game.night_time_changed.connect(_apply_night_time)
-	_apply_night_time(Game.night_time)
 
 
 func _build_sky_and_light() -> void:
@@ -132,10 +136,10 @@ func _build_lamp(at: Vector3) -> void:
 	add_child(light)
 
 
-func _build_hint() -> void:
+func _build_hint(key: String) -> void:
 	var layer := CanvasLayer.new()
 	var label := Label.new()
-	label.text = "HINT_TEST_SCENE"
+	label.text = key
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_top = -40.0
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -155,7 +159,8 @@ func _spawn(item_data: ItemData, xf: Transform3D) -> Item:
 func _on_spawn_requested(item_data: ItemData) -> void:
 	if not Net.is_host():
 		return
-	var at: Vector3 = _camera.global_position - _camera.global_basis.z * 2.0
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	var at: Vector3 = cam.global_position - cam.global_basis.z * 2.0
 	var basis := Basis(Vector3.UP, _rng.randf_range(0.0, TAU))
 	_spawned.append(_spawn(item_data, Transform3D(basis, at)))
 

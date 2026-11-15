@@ -36,7 +36,9 @@ jobs:
         run: godot --headless --path . --import
 
       - name: Автотесты
-        run: godot --headless --path . res://tests/run_tests.tscn
+        run: |
+          godot --headless --path . res://tests/run_tests.tscn
+          godot --headless --path . --fixed-fps 60 res://tests/player_test.tscn
 
       - name: Экспорт Windows
         run: |

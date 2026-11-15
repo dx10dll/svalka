@@ -6,6 +6,10 @@ extends CanvasLayer
 signal spawn_requested(item_data: ItemData)
 signal clear_requested
 
+const SCENES: Array = [
+	["SCENE_STAGE1", "res://scenes/debug/playground_stage1.tscn"],
+	["SCENE_STAGE0", "res://scenes/debug/test_scene.tscn"],
+]
 const ACTIVE_BODY_BUDGET: int = 150  # цель из промта: не больше ~150 активных тел
 
 var _panel: PanelContainer
@@ -69,6 +73,16 @@ func _build() -> void:
 	title.text = "DEBUG_TITLE"
 	title.add_theme_font_size_override(&"font_size", 20)
 	box.add_child(title)
+
+	# тестовые сцены
+	box.add_child(_caption("DEBUG_SCENES"))
+	for entry: Array in SCENES:
+		var sb := Button.new()
+		sb.text = entry[0]
+		sb.pressed.connect(func() -> void:
+			toggle()
+			get_tree().change_scene_to_file(entry[1]))
+		box.add_child(sb)
 
 	# спавн предметов
 	box.add_child(_caption("DEBUG_SPAWN"))
