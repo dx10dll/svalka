@@ -96,11 +96,27 @@ def finish(asset_path: str, tri_budget: int) -> dict:
 
     png = PREVIEWS_DIR / f"{asset_path}.png"
     png.parent.mkdir(parents=True, exist_ok=True)
+    _rest_pose_for_preview()
     render_preview(png)
     info = {"asset": asset_path, "triangles": tris, "glb": str(glb.relative_to(ROOT)),
             "preview": str(png.relative_to(ROOT))}
     print(f"[asset] {info}")
     return info
+
+
+def _rest_pose_for_preview() -> None:
+    """Превью снимаем в позе покоя: глушим NLA-дорожки и сбрасываем кости."""
+    for o in bpy.context.scene.objects:
+        if o.type != "ARMATURE":
+            continue
+        if o.animation_data:
+            o.animation_data.action = None
+            for track in o.animation_data.nla_tracks:
+                track.mute = True
+        for pb in o.pose.bones:
+            pb.location = (0.0, 0.0, 0.0)
+            pb.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+    bpy.context.view_layer.update()
 
 
 def _export_glb(path: Path) -> None:
@@ -119,6 +135,11 @@ def _export_glb(path: Path) -> None:
         export_all_vertex_colors=False,
         export_extras=True,
         export_image_format="NONE",
+        export_animations=True,
+        export_animation_mode="NLA_TRACKS",
+        export_skins=True,
+        export_force_sampling=True,
+        export_optimize_animation_size=False,
     )
 
 
@@ -133,71 +154,91 @@ def _bounds() -> tuple[Vector, float]:
     return (lo + hi) / 2, (hi - lo).length / 2
 
 
+class _Studio:
+    """Свет и камера для превью: тёплый ключ (натриевый фонарь) и холодный контровой (луна)."""
+
+    def __init__(self) -> None:
+        scene = bpy.context.scene
+        self.scene = scene
+        for o in scene.objects:
+            if o.name.startswith("col_"):
+                o.hide_render = True
+        scene.render.engine = "CYCLES"
+        scene.cycles.device = "CPU"
+        scene.cycles.samples = 32
+        try:
+            scene.cycles.use_denoising = True
+        except AttributeError:
+            pass
+        scene.render.resolution_x = scene.render.resolution_y = PREVIEW_CELL
+        scene.render.film_transparent = False
+        scene.view_settings.view_transform = "Standard"
+        world = scene.world or bpy.data.worlds.new("preview")
+        scene.world = world
+        world.use_nodes = True
+        bg = world.node_tree.nodes.get("Background")
+        bg.inputs["Color"].default_value = (0.045, 0.05, 0.065, 1.0)  # ночная синева
+        bg.inputs["Strength"].default_value = 1.0
+
+        self.center, self.radius = _bounds()
+        self.key = bpy.data.objects.new("key", bpy.data.lights.new("key", "AREA"))
+        self.key.data.energy = 35 * (self.radius * 3) ** 2  # мощность растёт с квадратом расстояния
+        self.key.data.size = self.radius * 2.5
+        self.key.data.color = (1.0, 0.82, 0.62)
+        self.rim = bpy.data.objects.new("rim", bpy.data.lights.new("rim", "SUN"))
+        self.rim.data.energy = 1.2
+        self.rim.data.color = (0.62, 0.74, 1.0)
+        self.cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
+        self.cam.data.lens = 50
+        for o in (self.key, self.rim, self.cam):
+            scene.collection.objects.link(o)
+        scene.camera = self.cam
+        self.dist = self.radius / math.tan(self.cam.data.angle / 2) * 1.15
+        self.tmp_dir = PREVIEWS_DIR / ".tmp"
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
+        self.tiles: list = []
+
+    def shoot(self, azimuth: float, elevation: float) -> None:
+        d = _dir(azimuth, elevation)
+        self.cam.location = self.center + d * self.dist
+        self.cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
+        kd = _dir(azimuth - 40, 45)
+        self.key.location = self.center + kd * self.radius * 3
+        self.key.rotation_euler = (-kd).to_track_quat("-Z", "Y").to_euler()
+        self.rim.rotation_euler = (_dir(azimuth + 160, 30) * -1).to_track_quat("-Z", "Y").to_euler()
+        self.scene.render.filepath = str(self.tmp_dir / f"v{len(self.tiles)}.png")
+        bpy.ops.render.render(write_still=True)
+        self.tiles.append(bpy.data.images.load(self.scene.render.filepath))
+
+    def save(self, path: Path, cols: int) -> None:
+        _compose(self.tiles, path, cols)
+        for t in self.tiles:
+            os.remove(bpy.path.abspath(t.filepath))
+            bpy.data.images.remove(t)
+        for o in (self.key, self.rim, self.cam):
+            bpy.data.objects.remove(o)
+
+
 def render_preview(path: Path) -> None:
     """Четыре ракурса в одной картинке 2×2: спереди-слева, сзади-справа, сбоку, сверху."""
-    scene = bpy.context.scene
-    hidden = [o for o in scene.objects if o.name.startswith("col_")]
-    for o in hidden:
-        o.hide_render = True
+    studio = _Studio()
+    for az, el in [(-35, 22), (145, 22), (90, 8), (-35, 70)]:  # азимут от -Y, высота в градусах
+        studio.shoot(az, el)
+    studio.save(path, cols=2)
 
-    scene.render.engine = "CYCLES"
-    scene.cycles.device = "CPU"
-    scene.cycles.samples = 32
-    try:
-        scene.cycles.use_denoising = True
-    except AttributeError:
-        pass
-    scene.render.resolution_x = scene.render.resolution_y = PREVIEW_CELL
-    scene.render.film_transparent = False
-    scene.view_settings.view_transform = "Standard"
 
-    world = bpy.data.worlds.new("preview") if not scene.world else scene.world
-    scene.world = world
-    world.use_nodes = True
-    bg = world.node_tree.nodes.get("Background")
-    bg.inputs["Color"].default_value = (0.045, 0.05, 0.065, 1.0)  # ночная синева
-    bg.inputs["Strength"].default_value = 1.0
-
-    center, radius = _bounds()
-    # тёплый ключевой свет (как натриевый фонарь) и холодный контровой (луна)
-    key = bpy.data.objects.new("key", bpy.data.lights.new("key", "AREA"))
-    key.data.energy = 35 * (radius * 3) ** 2  # мощность растёт с квадратом расстояния до предмета
-    key.data.size = radius * 2.5
-    key.data.color = (1.0, 0.82, 0.62)
-    rim = bpy.data.objects.new("rim", bpy.data.lights.new("rim", "SUN"))
-    rim.data.energy = 1.2
-    rim.data.color = (0.62, 0.74, 1.0)
-    for o in (key, rim):
-        scene.collection.objects.link(o)
-
-    cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
-    cam.data.lens = 50
-    scene.collection.objects.link(cam)
-    scene.camera = cam
-    dist = radius / math.tan(cam.data.angle / 2) * 1.15
-
-    views = [(-35, 22), (145, 22), (90, 8), (-35, 70)]  # азимут от -Y, высота в градусах
-    tiles = []
-    tmp_dir = PREVIEWS_DIR / ".tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    for i, (az, el) in enumerate(views):
-        d = _dir(az, el)
-        cam.location = center + d * dist
-        cam.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
-        kd = _dir(az - 40, 45)
-        key.location = center + kd * radius * 3
-        key.rotation_euler = (-kd).to_track_quat("-Z", "Y").to_euler()
-        rim.rotation_euler = (_dir(az + 160, 30) * -1).to_track_quat("-Z", "Y").to_euler()
-        scene.render.filepath = str(tmp_dir / f"v{i}.png")
-        bpy.ops.render.render(write_still=True)
-        tiles.append(bpy.data.images.load(scene.render.filepath))
-
-    _compose(tiles, path)
-    for t in tiles:
-        os.remove(bpy.path.abspath(t.filepath))
-        bpy.data.images.remove(t)
-    for o in (key, rim, cam):
-        bpy.data.objects.remove(o)
+def render_pose_sheet(asset_path: str, armature: bpy.types.Object, poses: list[tuple[str, int]],
+                      cols: int = 4, azimuth: float = -50, elevation: float = 12) -> Path:
+    """Раскадровка: ключевые позы клипов (имя, кадр) на одной картинке."""
+    from . import rig
+    path = PREVIEWS_DIR / f"{asset_path}_poses.png"
+    studio = _Studio()
+    studio.radius *= 1.15  # запас под вытянутые руки и шаг
+    studio.dist *= 1.15
+    rig.pose_sheet(armature, poses, lambda _i: studio.shoot(azimuth, elevation))
+    studio.save(path, cols=cols)
+    print(f"[poses] {path.relative_to(ROOT)}")
+    return path
 
 
 def _dir(azimuth_deg: float, elevation_deg: float) -> Vector:
@@ -205,18 +246,22 @@ def _dir(azimuth_deg: float, elevation_deg: float) -> Vector:
     return Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
 
 
-def _compose(tiles: list, path: Path) -> None:
+def _compose(tiles: list, path: Path, cols: int) -> None:
     import numpy as np
     n = PREVIEW_CELL
-    canvas = np.zeros((n * 2, n * 2, 4), dtype=np.float32)
+    rows = math.ceil(len(tiles) / cols)
+    canvas = np.zeros((n * rows, n * cols, 4), dtype=np.float32)
+    canvas[..., 3] = 1.0
     for i, img in enumerate(tiles):
         px = np.array(img.pixels[:], dtype=np.float32).reshape(n, n, 4)
-        # пиксели Blender идут снизу вверх: верхний ряд картинок — это нижние строки
-        row, col = 1 - i // 2, i % 2
+        # пиксели Blender идут снизу вверх: первый ряд картинок — это верхние строки
+        row, col = rows - 1 - i // cols, i % cols
         canvas[row * n:(row + 1) * n, col * n:(col + 1) * n] = px
-    canvas[:, n - 1:n + 1] = (0.2, 0.2, 0.2, 1)
-    canvas[n - 1:n + 1, :] = (0.2, 0.2, 0.2, 1)
-    out = bpy.data.images.new("preview_out", n * 2, n * 2, alpha=True)
+    for c in range(1, cols):
+        canvas[:, c * n - 1:c * n + 1] = (0.2, 0.2, 0.2, 1)
+    for r in range(1, rows):
+        canvas[r * n - 1:r * n + 1, :] = (0.2, 0.2, 0.2, 1)
+    out = bpy.data.images.new("preview_out", n * cols, n * rows, alpha=True)
     out.pixels[:] = canvas.ravel()
     out.filepath_raw = str(path)
     out.file_format = "PNG"

@@ -23,7 +23,7 @@ extends Resource
 @export var gravity: float = 24.0
 ## Падаем быстрее, чем взлетаем: прыжок выходит весомым
 @export var fall_gravity_factor: float = 1.3
-@export var jump_height: float = 1.05
+@export var jump_height: float = 1.0
 ## Отпустил прыжок рано — прыжок ниже (множитель гравитации на взлёте)
 @export var jump_cut_factor: float = 2.2
 ## Можно прыгнуть спустя это время после схода с края, с
@@ -33,24 +33,24 @@ extends Resource
 @export var max_fall_speed: float = 38.0
 
 @export_group("Тело")
-@export var radius: float = 0.3
-@export var stand_height: float = 1.8
-@export var crouch_height: float = 1.1
+@export var radius: float = 0.28
+@export var stand_height: float = 1.28
+@export var crouch_height: float = 0.8
 ## Глаза ниже макушки на столько
-@export var eye_drop: float = 0.14
+@export var eye_drop: float = 0.2
 @export var crouch_lerp_speed: float = 10.0
 ## Высота ступеньки, на которую заходим без прыжка
-@export var step_height: float = 0.38
+@export var step_height: float = 0.36
 @export var floor_max_angle_deg: float = 46.0
 ## Сила, с которой расталкиваем предметы, Н
 @export var push_force: float = 260.0
 
 @export_group("Залезание на уступ")
 ## Уступ ниже этого перешагиваем по нажатию прыжка, не прыгая
-@export var vault_height: float = 1.15
+@export var vault_height: float = 0.85
 ## Докуда дотягиваемся руками от подошв (в воздухе)
-@export var mantle_reach_up: float = 1.7
-@export var mantle_min_height: float = 0.45
+@export var mantle_reach_up: float = 1.4
+@export var mantle_min_height: float = 0.4
 @export var mantle_reach_forward: float = 0.55
 @export var mantle_base_time: float = 0.22
 @export var mantle_time_per_meter: float = 0.22
@@ -61,15 +61,19 @@ extends Resource
 @export var hard_landing_speed: float = 9.0
 ## Скорость удара, с которой персонаж валится с ног, м/с (около 4 м высоты)
 @export var knockdown_speed: float = 13.5
-@export var knockdown_time: float = 1.3
+@export var knockdown_time: float = 1.7
+## Толчок при падении нарочно (Q): вперёд и вверх, м/с
+@export var flop_push: Vector2 = Vector2(2.5, 2.5)
 @export var getup_time: float = 0.9
 
 @export_group("Камера")
 @export var fov: float = 78.0
 @export var sprint_fov_add: float = 7.0
-## Длина полного цикла шагов (два шага), м
-@export var stride_length: float = 2.7
-@export var bob_height: float = 0.045
+## Длина полного цикла шагов (два шага) шагом, бегом и в приседе, м
+@export var stride_walk: float = 2.1
+@export var stride_run: float = 2.9
+@export var stride_crouch: float = 1.3
+@export var bob_height: float = 0.035
 @export var bob_side: float = 0.03
 @export var bob_roll_deg: float = 0.6
 ## Наклон камеры при движении боком, градусов на полной скорости

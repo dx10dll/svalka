@@ -88,7 +88,7 @@ func _run() -> void:
 	_check(_mantles == 1, "сработало перелезание через ящик 1 м")
 	_check(absf(_player.global_position.y - 1.0) < 0.1, "стоим на ящике, y = %.2f" % _player.global_position.y)
 
-	# 6. уступ 2 м с земли: прыжок и подтягивание
+	# 6. уступ 2 м с земли: прыжок и подтягивание (мужичок мелкий, достаёт до ~2.3 м)
 	await _place(Vector3(2, 0.05, -7.4), 0.0)
 	_mantles = 0
 	input.move = Vector2(0, 1)
@@ -107,13 +107,13 @@ func _run() -> void:
 	await _place(Vector3(2.5, 0.05, 0), -PI / 2.0)
 	input.move = Vector2(0, 1)
 	await _wait(1.2)
-	_check(_player.global_position.x < 4.6, "стоя в лаз не пролезть (x = %.2f)" % _player.global_position.x)
+	_check(_player.global_position.x < 4.3, "стоя в лаз не пролезть (x = %.2f)" % _player.global_position.x)
 	input.crouch_held = true
 	await _wait(1.3)
 	input.crouch_held = false
 	input.move = Vector2.ZERO
 	await _wait(0.4)
-	_check(_player.global_position.x > 4.9 and _player.global_position.x < 7.2, "сидя пролезли внутрь (x = %.2f)" % _player.global_position.x)
+	_check(_player.global_position.x > 4.9 and _player.global_position.x < 7.6, "сидя пролезли внутрь (x = %.2f)" % _player.global_position.x)
 	_check(_player.crouching, "под низким потолком остаёмся сидеть")
 
 	# 8. падение с вышки 6 м валит с ног, потом встаём
@@ -124,8 +124,20 @@ func _run() -> void:
 	input.move = Vector2.ZERO
 	_check(_knocked, "падение с 6 м сбивает с ног")
 	_check(_player.mode == PlayerController.Mode.DOWNED, "лежим после падения")
-	await _wait(2.5)
+	await _wait(3.2)
 	_check(_player.mode == PlayerController.Mode.NORMAL, "встали после падения")
+	_check(absf(_player.global_position.y) < 0.15, "встали на землю, а не провалились (y = %.2f)" % _player.global_position.y)
+
+	# 8б. упасть нарочно (Q) и встать
+	await _place(Vector3(0, 0.05, 12), 0.0)
+	_knocked = false
+	input.flop_pressed = true
+	await _wait(0.02)
+	input.flop_pressed = false
+	_check(_knocked and _player.body.ragdoll.active, "по Q персонаж падает рэгдоллом")
+	await _wait(4.0)
+	_check(_player.mode == PlayerController.Mode.NORMAL and not _player.body.ragdoll.active, "после Q встаём")
+	_check(_player.global_position.distance_to(Vector3(0, 0, 12)) < 4.0, "рэгдолл не улетел: остались рядом")
 
 	# 9. прыжок с 2 м с ног не валит
 	await _place(Vector3(2, 2.05, -9), PI)

@@ -18,7 +18,10 @@ var _bob_weight: float = 0.0
 var _roll: float = 0.0
 var _fov_add: float = 0.0
 var _eye_height: float = 1.66
-var _downed_roll_sign: float = 1.0
+var _has_ragdoll_view: bool = false
+var _rag_basis_offset := Basis.IDENTITY
+var _rag_eye_local := Vector3.ZERO
+var _rag_basis_smooth := Basis.IDENTITY
 var _mantle_kick: float = 0.0
 
 
@@ -54,7 +57,7 @@ func _process(delta: float) -> void:
 	# качание от шага: сила растёт со скоростью, в воздухе затухает
 	var bob_target: float = clampf(speed / _feel.walk_speed, 0.0, 1.5) if grounded else 0.0
 	_bob_weight = lerpf(_bob_weight, bob_target, 1.0 - exp(-9.0 * delta))
-	var phase: float = _player.stride_distance / _feel.stride_length * TAU
+	var phase: float = _player.stride_phase * TAU
 	var bob_y: float = -absf(sin(phase)) * _feel.bob_height * _bob_weight
 	var bob_x: float = cos(phase) * _feel.bob_side * _bob_weight
 	var bob_roll: float = cos(phase) * deg_to_rad(_feel.bob_roll_deg) * _bob_weight
@@ -70,18 +73,29 @@ func _process(delta: float) -> void:
 	if _player.mode == PlayerController.Mode.MANTLE:
 		mantle_pitch = -sin(_player.mode_progress * PI) * 0.16
 
-	# лежим: камера у земли, завалена набок
-	var down: float = _player.downed_amount()
 	_eye_height = lerpf(_eye_height, _player.eye_height(), 1.0 - exp(-18.0 * delta))
-	var eye: float = lerpf(_eye_height, 0.28, down)
 
+	# обычный вид: позиция из сглаженного тела, поворот сразу из мыши
 	var base: Vector3 = _player.get_global_transform_interpolated().origin
-	var offset := Vector3(bob_x, eye + bob_y + _dip + _player.step_visual_offset, 0.0)
+	var offset := Vector3(bob_x, _eye_height + bob_y + _dip + _player.step_visual_offset, 0.0)
 	var yaw_basis := Basis(Vector3.UP, _player.yaw)
-	global_position = base + yaw_basis * offset
-	var pitch: float = _player.pitch * (1.0 - down * 0.7) + mantle_pitch + down * 0.35
-	var roll: float = _roll + bob_roll + down * 1.15 * _downed_roll_sign - _mantle_kick * 0.04
-	global_basis = yaw_basis * Basis(Vector3.RIGHT, pitch) * Basis(Vector3.BACK, roll)
+	var pos: Vector3 = base + yaw_basis * offset
+	var roll: float = _roll + bob_roll - _mantle_kick * 0.04
+	var basis_n: Basis = yaw_basis * Basis(Vector3.RIGHT, _player.pitch + mantle_pitch) * Basis(Vector3.BACK, roll)
+
+	# сбили с ног: камера сидит в голове рэгдолла и кувыркается вместе с ней,
+	# при вставании плавно возвращается к обычному виду
+	var down: float = _player.downed_amount()
+	if down > 0.0 and _has_ragdoll_view:
+		var head: Transform3D = _player.body.ragdoll.head_transform()
+		var rag_basis: Basis = (head.basis * _rag_basis_offset).orthonormalized()
+		_rag_basis_smooth = _rag_basis_smooth.slerp(rag_basis, 1.0 - exp(-22.0 * delta)).orthonormalized()
+		pos = pos.lerp(head * _rag_eye_local, down)
+		basis_n = basis_n.slerp(_rag_basis_smooth, down).orthonormalized()
+	else:
+		_has_ragdoll_view = false
+	global_position = pos
+	global_basis = basis_n
 
 	var fov_target: float = _feel.sprint_fov_add if _player.sprinting else 0.0
 	_fov_add = lerpf(_fov_add, fov_target, 1.0 - exp(-6.0 * delta))
@@ -95,6 +109,13 @@ func _on_landed(impact: float) -> void:
 
 
 func _on_knocked_down(_impact: float) -> void:
-	_downed_roll_sign = 1.0 if randf() > 0.5 else -1.0
 	_dip_velocity = 0.0
 	_dip = 0.0
+	if _player.body == null:
+		return
+	# запоминаем, как камера сидит относительно головы в момент падения
+	var head: Transform3D = _player.body.ragdoll.bodies[&"head"].global_transform
+	_rag_basis_offset = head.basis.inverse() * global_basis
+	_rag_eye_local = head.affine_inverse() * global_position
+	_rag_basis_smooth = global_basis
+	_has_ragdoll_view = true

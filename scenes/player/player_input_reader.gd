@@ -6,6 +6,7 @@ extends Node
 var enabled: bool = true
 var _look: Vector2 = Vector2.ZERO
 var _jump_queued: bool = false
+var _flop_queued: bool = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -16,6 +17,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_look += (event as InputEventMouseMotion).relative * sens
 	elif event.is_action_pressed(&"jump"):
 		_jump_queued = true
+	elif event.is_action_pressed(&"flop"):
+		_flop_queued = true
 	elif event.is_action_pressed(&"pause"):
 		var captured: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
@@ -42,6 +45,7 @@ func sample() -> PlayerInput:
 	var input := PlayerInput.new()
 	if not enabled or DebugMenu.is_open():
 		_jump_queued = false
+		_flop_queued = false
 		return input
 	var v: Vector2 = Input.get_vector(&"move_left", &"move_right", &"move_back", &"move_forward")
 	input.move = v
@@ -49,5 +53,7 @@ func sample() -> PlayerInput:
 	input.jump_held = Input.is_action_pressed(&"jump")
 	input.crouch_held = Input.is_action_pressed(&"crouch")
 	input.sprint_held = Input.is_action_pressed(&"sprint")
+	input.flop_pressed = _flop_queued
 	_jump_queued = false
+	_flop_queued = false
 	return input

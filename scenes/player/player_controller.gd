@@ -11,6 +11,8 @@ signal jumped
 signal landed(impact_speed: float)
 signal mantle_started(height: float, duration: float)
 signal knocked_down(impact_speed: float)
+## Упавший начинает вставать (duration — сколько это займёт)
+signal getup_started(duration: float)
 signal got_up
 signal footstep(speed: float)
 
@@ -28,8 +30,8 @@ var pitch: float = 0.0
 var height: float = 1.8
 var crouching: bool = false
 var sprinting: bool = false
-## Пройденный путь по земле, м (для шагов и качания камеры)
-var stride_distance: float = 0.0
+## Фаза шагов в циклах (1.0 = два шага): по ней идут качание камеры, звуки и анимация ног
+var stride_phase: float = 0.0
 ## Смещение картинки вниз после захода на ступеньку, плавно уходит в 0
 var step_visual_offset: float = 0.0
 ## 0..1 — прогресс залезания или лежания
@@ -37,6 +39,9 @@ var mode_progress: float = 0.0
 
 ## Если задан, ввод берётся отсюда, а не с клавиатуры (автотесты, позже — сеть и боты)
 var scripted_input: PlayerInput = null
+
+## Видимое тело с анимациями и рэгдоллом
+var body: PlayerBody
 
 var _input := PlayerInput.new()
 var _reader: PlayerInputReader
@@ -53,6 +58,7 @@ var _mantle_time: float = 0.0
 var _mode_time: float = 0.0
 var _last_step_index: int = 0
 var _mantle_cooldown: float = 0.0
+var _getting_up: bool = false
 
 
 func _ready() -> void:
@@ -72,6 +78,10 @@ func _ready() -> void:
 	rotation = Vector3.ZERO  # тело не вращаем, поворот хранится в yaw
 	_reader = PlayerInputReader.new()
 	add_child(_reader)
+	body = PlayerBody.new()
+	body.name = "Body"
+	add_child(body)
+	body.setup(self, true)
 	var cam := PlayerCamera.new()
 	cam.name = "Camera"
 	add_child(cam)
@@ -107,6 +117,14 @@ func eye_height() -> float:
 	return height - feel.eye_drop
 
 
+## Длина цикла шагов при текущем способе передвижения, м.
+func stride_length() -> float:
+	if crouching:
+		return feel.stride_crouch
+	var t: float = inverse_lerp(feel.walk_speed, feel.sprint_speed, horizontal_speed())
+	return lerpf(feel.stride_walk, feel.stride_run, clampf(t, 0.0, 1.0))
+
+
 func forward() -> Vector3:
 	return -Basis(Vector3.UP, yaw).z
 
@@ -127,6 +145,11 @@ func respawn() -> void:
 
 func _tick_normal(delta: float) -> void:
 	var on_floor: bool = is_on_floor()
+	if _input.flop_pressed:
+		# упасть нарочно: бросок вперёд и вверх, дальше работает рэгдолл
+		velocity += forward() * feel.flop_push.x + Vector3.UP * feel.flop_push.y
+		_enter_downed(0.0)
+		return
 	_update_crouch(delta)
 	sprinting = _input.sprint_held and not crouching and _input.move.y > 0.5 and on_floor
 
@@ -163,6 +186,10 @@ func _tick_normal(delta: float) -> void:
 
 	if not is_on_floor():
 		_fall_speed = maxf(_fall_speed, -velocity.y)
+		# падаем слишком быстро: уже в воздухе теряем контроль и летим рэгдоллом
+		if -velocity.y >= feel.knockdown_speed and not Game.debug_flag(&"god_mode"):
+			_enter_downed(-velocity.y)
+			return
 
 	var stepped: bool = on_floor and _try_step_up(delta)
 	if not stepped:
@@ -174,8 +201,8 @@ func _tick_normal(delta: float) -> void:
 		_on_landed(_fall_speed)
 	if is_on_floor():
 		_fall_speed = 0.0
-		stride_distance += horizontal_speed() * delta
-		var step_index: int = int(stride_distance / (feel.stride_length * 0.5))
+		stride_phase += horizontal_speed() * delta / stride_length()
+		var step_index: int = int(stride_phase * 2.0)
 		if step_index != _last_step_index:
 			_last_step_index = step_index
 			footstep.emit(horizontal_speed())
@@ -386,6 +413,8 @@ func _enter_downed(impact: float) -> void:
 	_mode_time = 0.0
 	mode_progress = 0.0
 	sprinting = false
+	_getting_up = false
+	_collider.disabled = true  # пока лежим, за тело отвечает рэгдолл
 	knocked_down.emit(impact)
 
 
@@ -393,10 +422,22 @@ func _tick_downed(delta: float) -> void:
 	_mode_time += delta
 	var total: float = feel.knockdown_time + feel.getup_time
 	mode_progress = clampf(_mode_time / total, 0.0, 1.0)
-	# лежим: скользим по инерции и тормозим
-	var hv := Vector3(velocity.x, 0.0, velocity.z).move_toward(Vector3.ZERO, 9.0 * delta)
-	velocity.x = hv.x
-	velocity.z = hv.z
+	if not _getting_up:
+		# капсула едет за тазом рэгдолла, чтобы встать там, где упали
+		velocity = Vector3.ZERO
+		if body != null and body.ragdoll.active:
+			global_position = _floor_under(body.ragdoll.hips_position())
+			# не встаём, пока тело ещё катится
+			if _mode_time >= feel.knockdown_time and body.ragdoll.total_speed() > 1.2 \
+					and _mode_time < feel.knockdown_time + 8.0:
+				_mode_time = feel.knockdown_time - delta
+		if _mode_time >= feel.knockdown_time:
+			_getting_up = true
+			_collider.disabled = false
+			crouching = not _can_fit(global_position, feel.stand_height)
+			reset_physics_interpolation()
+			getup_started.emit(feel.getup_time)
+		return
 	if not is_on_floor():
 		velocity.y -= feel.gravity * feel.fall_gravity_factor * delta
 	move_and_slide()
@@ -405,6 +446,17 @@ func _tick_downed(delta: float) -> void:
 		_was_on_floor = is_on_floor()
 		_fall_speed = 0.0
 		got_up.emit()
+
+
+## Точка на полу под заданной позицией (куда поставить капсулу).
+func _floor_under(pos: Vector3) -> Vector3:
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 0.3, pos + Vector3.DOWN * 3.0)
+	q.exclude = [get_rid()]
+	q.collision_mask = 1
+	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty():
+		return pos
+	return (hit["position"] as Vector3) + Vector3.UP * 0.02
 
 
 ## Доля «лежания» 0..1 для камеры: 1 — лежим, 0 — стоим.

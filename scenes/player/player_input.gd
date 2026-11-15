@@ -9,3 +9,5 @@ var jump_pressed: bool = false
 var jump_held: bool = false
 var crouch_held: bool = false
 var sprint_held: bool = false
+## Нарочно упасть рэгдоллом (клавиша Q)
+var flop_pressed: bool = false
