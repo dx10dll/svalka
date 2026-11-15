@@ -48,8 +48,12 @@ func _populate() -> void:
 	for c: Array in LOOSE:
 		_add_crate(model, Vector3(c[0], c[1], c[2]), c[3], c[4])
 
-	var radiator: ItemData = load("res://data/items/radiator_cast_iron.tres")
-	_spawn(radiator, Transform3D(Basis(Vector3.UP, 0.4), Vector3(1.5, 0.02, -1.0)))
+	# предметы трёх весовых классов: лёгкий, хрупкий, неподъёмный в одиночку
+	_spawn(load("res://data/items/radiator_cast_iron.tres"), Transform3D(Basis(Vector3.UP, 0.4), Vector3(1.8, 0.02, -1.2)))
+	_spawn(load("res://data/items/cable_coil.tres"), Transform3D(Basis.IDENTITY, Vector3(-1.2, 0.02, -0.6)))
+	_spawn(load("res://data/items/cable_coil.tres"), Transform3D(Basis(Vector3.UP, 1.0), Vector3(-1.9, 0.02, -1.4)))
+	_spawn(load("res://data/items/tv_crt.tres"), Transform3D(Basis(Vector3.UP, 2.8), Vector3(0.3, 0.02, -1.6)))
+	_spawn(load("res://data/items/tv_crt.tres"), Transform3D(Basis(Vector3.UP, 3.4), Vector3(-0.5, 1.02, -6.2)))
 
 	_player = (load(PLAYER_SCENE) as PackedScene).instantiate()
 	_player.position = Vector3(0.0, 0.05, 2.0)

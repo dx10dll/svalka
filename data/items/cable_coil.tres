@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/items/cable_coil.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"cable_coil"
+name_key = "ITEM_CABLE_COIL"
+model = ExtResource("2")
+mass_min_kg = 15.0
+mass_max_kg = 25.0
+carriers = 1
+metal = 0
+unit_price = 0
+break_speed = 0.0
+break_loss = 0.0

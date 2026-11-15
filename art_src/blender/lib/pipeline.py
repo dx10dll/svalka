@@ -79,6 +79,11 @@ def _visual_meshes() -> list[bpy.types.Object]:
     return [o for o in bpy.context.scene.objects if o.type == "MESH" and not o.name.startswith("col_")]
 
 
+def _budget_meshes() -> list[bpy.types.Object]:
+    """Меши, которые видны одновременно: разбитый вариант заменяет целый, а не добавляется."""
+    return [o for o in _visual_meshes() if not o.name.endswith("_broken")]
+
+
 def finish(asset_path: str, tri_budget: int) -> dict:
     """Проверка, экспорт и превью. asset_path без расширения, например 'items/radiator_cast_iron'."""
     mat = palette_material()
@@ -86,6 +91,7 @@ def finish(asset_path: str, tri_budget: int) -> dict:
     for o in _visual_meshes():
         o.data.materials.clear()
         o.data.materials.append(mat)
+    for o in _budget_meshes():
         tris += geo.triangle_count(o)
     if tris > tri_budget:
         raise RuntimeError(f"{asset_path}: {tris} треугольников, бюджет {tri_budget}")
@@ -161,7 +167,8 @@ class _Studio:
         scene = bpy.context.scene
         self.scene = scene
         for o in scene.objects:
-            if o.name.startswith("col_"):
+            # коллизии и «разбитые» варианты в превью не показываем
+            if o.name.startswith("col_") or o.name.endswith("_broken"):
                 o.hide_render = True
         scene.render.engine = "CYCLES"
         scene.cycles.device = "CPU"

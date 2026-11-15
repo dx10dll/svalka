@@ -42,6 +42,8 @@ var scripted_input: PlayerInput = null
 
 ## Видимое тело с анимациями и рэгдоллом
 var body: PlayerBody
+## Захват и переноска предметов
+var grab: PlayerGrab
 
 var _input := PlayerInput.new()
 var _reader: PlayerInputReader
@@ -82,10 +84,18 @@ func _ready() -> void:
 	body.name = "Body"
 	add_child(body)
 	body.setup(self, true)
+	grab = PlayerGrab.new()
+	grab.name = "Grab"
+	add_child(grab)
+	grab.setup(self)
 	var cam := PlayerCamera.new()
 	cam.name = "Camera"
 	add_child(cam)
 	cam.setup(self)
+	var hud := Hud.new()
+	hud.name = "Hud"
+	add_child(hud)
+	hud.setup(grab)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -101,6 +111,7 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_input = scripted_input if scripted_input != null else _reader.sample()
+	grab.tick(_input, delta)
 	match mode:
 		Mode.NORMAL:
 			_tick_normal(delta)
@@ -151,7 +162,8 @@ func _tick_normal(delta: float) -> void:
 		_enter_downed(0.0)
 		return
 	_update_crouch(delta)
-	sprinting = _input.sprint_held and not crouching and _input.move.y > 0.5 and on_floor
+	sprinting = _input.sprint_held and not crouching and _input.move.y > 0.5 and on_floor \
+			and grab.held_mass() <= feel.sprint_mass_limit
 
 	# таймеры прощения: «койот» и буфер прыжка
 	_coyote = feel.coyote_time if on_floor else maxf(_coyote - delta, 0.0)
@@ -219,7 +231,8 @@ func _apply_horizontal(delta: float, on_floor: bool) -> void:
 	# назад и боком медленнее, чем вперёд
 	var fwd_scale: float = 1.0 if move.y >= 0.0 else feel.backward_factor
 	var local := Vector3(move.x * feel.strafe_factor, 0.0, -move.y * fwd_scale)
-	var wish: Vector3 = Basis(Vector3.UP, yaw) * local * top
+	var wish: Vector3 = Basis(Vector3.UP, yaw) * local * top * grab.speed_scale()
+	wish = grab.filter_move(wish)
 
 	var hv := Vector3(velocity.x, 0.0, velocity.z)
 	var accel: float
@@ -295,15 +308,15 @@ func _try_step_up(delta: float) -> bool:
 func _push_bodies(delta: float) -> void:
 	for i: int in get_slide_collision_count():
 		var c: KinematicCollision3D = get_slide_collision(i)
-		var body: RigidBody3D = c.get_collider() as RigidBody3D
-		if body == null:
+		var other: RigidBody3D = c.get_collider() as RigidBody3D
+		if other == null or other == grab.held:
 			continue
 		var dir: Vector3 = -c.get_normal()
 		dir.y = 0.0
 		if dir.length() < 0.2:
 			continue
-		body.apply_impulse(dir.normalized() * feel.push_force * delta,
-				c.get_position() - body.global_position)
+		other.apply_impulse(dir.normalized() * feel.push_force * delta,
+				c.get_position() - other.global_position)
 
 
 func _on_landed(impact: float) -> void:

@@ -56,6 +56,36 @@ extends Resource
 @export var mantle_time_per_meter: float = 0.22
 @export var mantle_exit_speed: float = 1.6
 
+@export_group("Захват и переноска")
+## Докуда дотягиваемся взглядом, м
+@export var grab_reach: float = 2.0
+## Где держим предмет: вперёд от глаз и ниже линии взгляда, м
+@export var hold_distance: float = 0.64
+@export var hold_drop: float = 0.22
+## Сила рук вверх, Н. Поднимаем всё, что легче lift_force / 9.8 кг (сейчас около 43 кг)
+@export var lift_force: float = 420.0
+## Сила тяги вбок, Н (ею волочим тяжёлое)
+@export var pull_force: float = 380.0
+## Как быстро предмет догоняет руки (рад/с): больше — жёстче хват
+@export var grab_frequency: float = 13.0
+## Предел усилия, которым удерживаем поворот предмета, Н·м
+@export var hold_torque: float = 55.0
+## Предмет отстал от рук на столько — начинает тормозить игрока, м
+@export var tether_slack: float = 0.45
+## Отстал на столько — руки срываются, м
+@export var grab_break_distance: float = 1.5
+## Скорость шага с предельным весом в руках и волоком (доля от обычной)
+@export var carry_speed_factor: float = 0.6
+@export var drag_speed_factor: float = 0.42
+## С грузом тяжелее этого бегать нельзя, кг
+@export var sprint_mass_limit: float = 12.0
+@export_subgroup("Бросок")
+@export var throw_charge_time: float = 0.8
+## Импульс полного броска, Н·с: скорость = импульс / масса
+@export var throw_impulse: float = 150.0
+@export var throw_max_speed: float = 13.0
+@export var throw_up_bias: float = 0.18
+
 @export_group("Падение")
 ## Скорость удара о землю, с которой начинается «встряска», м/с
 @export var hard_landing_speed: float = 9.0

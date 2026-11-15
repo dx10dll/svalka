@@ -67,6 +67,43 @@ func _run() -> void:
 		await _wait(1.5)
 		_look_at_player()
 		await _snap("fall")
+	if _want("carry"):
+		# несём бухту: вид сбоку и от первого лица
+		var coil: Item = _find_item(&"cable_coil")
+		await _third_person(coil.global_position + Vector3(0, 0.05, 1.1), 0.0, Vector3(1.5, 0.9, 0.2))
+		await _take(coil)
+		_follow(Vector3(1.4, 0.7, -0.9))
+		await _snap("carry_coil")
+		_first_person()
+		await _wait(0.2)
+		await _snap("carry_coil_first_person")
+		_input.grab_held = false
+		await _wait(0.4)
+		# телевизор: несём, потом роняем с высоты — всплывает потеря
+		var tv: Item = _find_item(&"tv_crt")
+		await _third_person(tv.global_position + Vector3(0, 0.05, 1.1), 0.0, Vector3(1.5, 0.9, 0.2))
+		await _take(tv)
+		_first_person()
+		await _wait(0.2)
+		await _snap("carry_tv_first_person")
+		_input.grab_held = false
+		await _wait(0.3)
+		tv.global_position += Vector3(0, 4.0, -1.0)
+		tv.linear_velocity = Vector3.ZERO
+		_player.pitch = -0.25
+		await _wait(1.05)
+		await _snap("tv_broken")
+		# батарея: волоком
+		var radiator: Item = _find_item(&"radiator_cast_iron")
+		await _third_person(radiator.global_position + Vector3(0, 0.05, 1.2), 0.0, Vector3(1.6, 0.9, 0.3))
+		await _take(radiator)
+		_input.move = Vector2(0, -1)
+		await _wait(1.2)
+		_follow(Vector3(1.8, 0.9, -0.6))
+		await _snap("drag_radiator")
+		_input.move = Vector2.ZERO
+		_input.grab_held = false
+		await _wait(0.3)
 	if _want("fp"):
 		# вид от первого лица: взгляд вниз на свои руки и ноги
 		await _place(Vector3(0, 0.05, 2), 0.0)
@@ -81,6 +118,30 @@ func _run() -> void:
 		await _snap("first_person")
 		_input.move = Vector2.ZERO
 	get_tree().quit()
+
+
+func _find_item(id: StringName) -> Item:
+	for n: Node in get_tree().get_nodes_in_group(&"items"):
+		if (n as Item).data.id == id:
+			return n
+	return null
+
+
+## Навестись на предмет, взять и поднять взгляд.
+func _take(item: Item) -> void:
+	var to: Vector3 = item.global_position + Vector3.UP * 0.12 - _player.grab.eye()
+	_player.yaw = atan2(-to.x, -to.z)
+	_player.pitch = atan2(to.y, Vector2(to.x, to.z).length())
+	await _wait(0.1)
+	_input.grab_held = true
+	await _wait(0.4)
+	_player.pitch = -0.1
+	await _wait(1.0)
+
+
+func _first_person() -> void:
+	_player.body.set_first_person(true)
+	(_player.get_node(^"Camera") as PlayerCamera).camera.make_current()
 
 
 func _want(scenario: String) -> bool:

@@ -11,3 +11,7 @@ var crouch_held: bool = false
 var sprint_held: bool = false
 ## Нарочно упасть рэгдоллом (клавиша Q)
 var flop_pressed: bool = false
+## Держим предмет (ЛКМ зажата)
+var grab_held: bool = false
+## Заряжаем бросок (ПКМ зажата), бросок по отпусканию
+var throw_held: bool = false

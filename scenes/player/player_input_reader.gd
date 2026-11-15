@@ -7,11 +7,15 @@ var enabled: bool = true
 var _look: Vector2 = Vector2.ZERO
 var _jump_queued: bool = false
 var _flop_queued: bool = false
+## Была ли мышь вообще: с геймпадом захват курсора не обязателен
+var _mouse_seen: bool = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not enabled:
 		return
+	if event is InputEventMouse:
+		_mouse_seen = true
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sens: float = Settings.get_value("controls", "mouse_sensitivity")
 		_look += (event as InputEventMouseMotion).relative * sens
@@ -53,6 +57,9 @@ func sample() -> PlayerInput:
 	input.jump_held = Input.is_action_pressed(&"jump")
 	input.crouch_held = Input.is_action_pressed(&"crouch")
 	input.sprint_held = Input.is_action_pressed(&"sprint")
+	var captured: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or not _mouse_seen
+	input.grab_held = captured and Input.is_action_pressed(&"grab")
+	input.throw_held = captured and Input.is_action_pressed(&"throw")
 	input.flop_pressed = _flop_queued
 	_jump_queued = false
 	_flop_queued = false

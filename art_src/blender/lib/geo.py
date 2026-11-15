@@ -154,6 +154,17 @@ def collider_box(name: str, size: tuple[float, float, float], center: tuple[floa
     return obj
 
 
+def collider_cylinder(name: str, radius: float, depth: float, center: tuple[float, float, float],
+                      axis: str = "Z", segments: int = 8) -> bpy.types.Object:
+    """Выпуклая коллизия-призма (для бухт, бочек, колёс)."""
+    b = Builder(f"col_{name}")
+    b.cylinder(radius, depth, center, "white", axis=axis, segments=segments)
+    obj = b.build()
+    obj.display_type = "WIRE"
+    obj.hide_render = True
+    return obj
+
+
 def grip(name: str, location: tuple[float, float, float],
          rotation: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> bpy.types.Object:
     """Точка хвата для IK рук. В Godot станет Marker3D с именем grip_*."""

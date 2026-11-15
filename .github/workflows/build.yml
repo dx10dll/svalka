@@ -39,6 +39,7 @@ jobs:
         run: |
           godot --headless --path . res://tests/run_tests.tscn
           godot --headless --path . --fixed-fps 60 res://tests/player_test.tscn
+          godot --headless --path . --fixed-fps 60 res://tests/carry_test.tscn
 
       - name: Экспорт Windows
         run: |
