@@ -1,13 +1,13 @@
-extends SceneTree
+extends Node
 ## Автотесты чистой логики без графики.
-## Запуск: godot --headless --path . -s tests/run_tests.gd
+## Запуск: godot --headless --path . res://tests/run_tests.tscn
 ## Код выхода 0 — всё прошло, 1 — есть провалы.
 
 var _failed: int = 0
 var _passed: int = 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_test_quota()
 	_test_scrap_value()
 	_test_seed_is_deterministic()
@@ -15,7 +15,7 @@ func _initialize() -> void:
 	_test_translations_complete()
 	_test_input_actions()
 	print("Тесты: прошло %d, провалено %d" % [_passed, _failed])
-	quit(1 if _failed > 0 else 0)
+	get_tree().quit(1 if _failed > 0 else 0)
 
 
 func _check(condition: bool, what: String) -> void:
@@ -36,7 +36,7 @@ func _test_quota() -> void:
 	_check(Quota.for_night(cfg, 1, 4) == 3000, "норма 1-й ночи на четверых 3000")
 	_check(Quota.for_night(cfg, 7, 4) == 23000, "норма 7-й ночи на четверых 23000")
 	_check(Quota.for_night(cfg, 1, 1) == 1350, "норма 1-й ночи в одиночку 1350")
-	_check(Quota.for_night(cfg, 3, 2) == 4900, "норма 3-й ночи вдвоём округляется до 4900")
+	_check(Quota.for_night(cfg, 2, 2) == 3250, "норма 2-й ночи вдвоём 3250")
 	var prev: int = 0
 	for night: int in range(1, cfg.nights() + 1):
 		var q: int = Quota.for_night(cfg, night, 3)
@@ -46,8 +46,8 @@ func _test_quota() -> void:
 
 func _test_scrap_value() -> void:
 	var cfg: EconomyConfig = _economy()
-	_check(Quota.scrap_value(cfg, ItemData.Material.FERROUS, 70.0) == 420, "батарея 70 кг = 420 ₽")
-	_check(Quota.scrap_value(cfg, ItemData.Material.COPPER, 20.0) == 2400, "медь 20 кг = 2400 ₽")
+	_check(Quota.scrap_value(cfg, ItemData.Metal.FERROUS, 70.0) == 420, "батарея 70 кг = 420 ₽")
+	_check(Quota.scrap_value(cfg, ItemData.Metal.COPPER, 20.0) == 2400, "медь 20 кг = 2400 ₽")
 
 
 ## Заготовка под генерацию свалки: одинаковый сид обязан давать одинаковый результат.

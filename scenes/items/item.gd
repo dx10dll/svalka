@@ -27,6 +27,7 @@ func setup(item_data: ItemData, rng: RandomNumberGenerator) -> void:
 	# Коллизии должны быть прямыми детьми тела, поэтому переносим их из модели
 	for shape: Node in model.find_children("col_*", "CollisionShape3D", true, false):
 		var xf: Transform3D = (shape as CollisionShape3D).transform
+		shape.owner = null
 		shape.get_parent().remove_child(shape)
 		add_child(shape)
 		(shape as CollisionShape3D).transform = xf
@@ -39,4 +40,4 @@ func setup(item_data: ItemData, rng: RandomNumberGenerator) -> void:
 
 ## Сколько предмет стоит сейчас как лом, ₽.
 func scrap_value() -> int:
-	return Quota.scrap_value(Game.economy, data.material, mass)
+	return Quota.scrap_value(Game.economy, data.metal, mass)

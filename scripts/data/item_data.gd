@@ -3,7 +3,7 @@ extends Resource
 ## Описание предмета свалки: вес, цена, кто может нести. Все числа — стартовые,
 ## правятся в .tres без кода.
 
-enum Material { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRANGE }
+enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRANGE }
 
 @export var id: StringName = &""
 ## Ключ перевода названия (locale/strings.csv)
@@ -16,7 +16,7 @@ enum Material { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, S
 ## Сколько человек нужно, чтобы нести (1 — один, 2+ — в одиночку только волоком)
 @export_range(1, 4) var carriers: int = 1
 @export_group("Цена")
-@export var material: Material = Material.FERROUS
+@export var metal: Metal = Metal.FERROUS
 ## Для техники и антиквариата: фиксированная цена за штуку целой вещи, ₽
 @export var unit_price: int = 0
 ## Хрупкость: удар быстрее этой скорости (м/с) отнимает целость. 0 — не бьётся

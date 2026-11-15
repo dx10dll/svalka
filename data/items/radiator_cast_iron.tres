@@ -11,4 +11,4 @@ model = ExtResource("2")
 mass_min_kg = 70.0
 mass_max_kg = 70.0
 carriers = 2
-material = 4
+metal = 4

@@ -20,16 +20,16 @@ func nights() -> int:
 	return quotas_for_four.size()
 
 
-func price_per_kg(material: ItemData.Material) -> int:
-	match material:
-		ItemData.Material.COPPER:
+func price_per_kg(metal: ItemData.Metal) -> int:
+	match metal:
+		ItemData.Metal.COPPER:
 			return price_copper
-		ItemData.Material.BRASS:
+		ItemData.Metal.BRASS:
 			return price_brass
-		ItemData.Material.ALUMINIUM:
+		ItemData.Metal.ALUMINIUM:
 			return price_aluminium
-		ItemData.Material.LEAD:
+		ItemData.Metal.LEAD:
 			return price_lead
-		ItemData.Material.FERROUS:
+		ItemData.Metal.FERROUS:
 			return price_ferrous
 	return 0

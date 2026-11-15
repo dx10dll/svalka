@@ -21,5 +21,5 @@ blender -b -P art_src/blender/build_all.py
 
 ```
 godot --headless --path . --import
-godot --headless --path . -s tests/run_tests.gd
+godot --headless --path . res://tests/run_tests.tscn
 ```

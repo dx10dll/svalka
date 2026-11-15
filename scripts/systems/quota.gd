@@ -13,5 +13,5 @@ static func for_night(cfg: EconomyConfig, night: int, players: int) -> int:
 
 
 ## Стоимость металлолома по весу, ₽ (без засора и целости).
-static func scrap_value(cfg: EconomyConfig, material: ItemData.Material, mass_kg: float) -> int:
-	return int(round(cfg.price_per_kg(material) * mass_kg))
+static func scrap_value(cfg: EconomyConfig, metal: ItemData.Metal, mass_kg: float) -> int:
+	return int(round(cfg.price_per_kg(metal) * mass_kg))

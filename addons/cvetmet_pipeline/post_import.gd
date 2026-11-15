@@ -35,11 +35,14 @@ func _walk(node: Node, root: Node, material: Material) -> void:
 
 
 func _replace(old: Node3D, new: Node3D, root: Node) -> void:
-	new.name = old.name
-	new.transform = old.transform
 	var parent: Node = old.get_parent()
-	parent.add_child(new)
-	parent.move_child(new, old.get_index())
-	new.owner = root
+	var index: int = old.get_index()
+	var old_name: StringName = old.name
+	new.transform = old.transform
+	# сначала убираем старый узел, иначе новый не сможет взять его имя
 	parent.remove_child(old)
 	old.queue_free()
+	new.name = old_name
+	parent.add_child(new)
+	parent.move_child(new, index)
+	new.owner = root

@@ -36,7 +36,7 @@ jobs:
         run: godot --headless --path . --import
 
       - name: Автотесты
-        run: godot --headless --path . -s tests/run_tests.gd
+        run: godot --headless --path . res://tests/run_tests.tscn
 
       - name: Экспорт Windows
         run: |
