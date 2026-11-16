@@ -5,6 +5,8 @@ extends "res://scenes/debug/test_scene.gd"
 const PLAYER_SCENE: String = "res://scenes/player/player.tscn"
 
 var dump: Dump
+## Окружение свалки (есть только у большой горы)
+var site: DumpSite
 var _player: PlayerController
 
 
@@ -29,7 +31,7 @@ func _populate() -> void:
 		var ground := StaticBody3D.new()
 		var shape := CollisionShape3D.new()
 		var box := BoxShape3D.new()
-		box.size = Vector3(r * 4.0, 1.0, r * 4.0)
+		box.size = Vector3(r * 6.0, 1.0, r * 6.0)
 		shape.shape = box
 		ground.add_child(shape)
 		var mesh := MeshInstance3D.new()
@@ -43,16 +45,20 @@ func _populate() -> void:
 		ground.add_child(mesh)
 		ground.position.y = -0.505
 		add_child(ground)
-		for i: int in 7:
-			var a: float = TAU * i / 7.0 + 0.4
-			_build_lamp(Vector3(cos(a), 0.0, sin(a)) * (r + 2.0))
+		site = DumpSite.new()
+		site.name = "Site"
+		add_child(site)
+		site.build(r, dump.dump_seed)
+		_env.ssr_enabled = true   # лужи отражают фонари и костры
+		_env.ssr_max_steps = 32
 	dump.prime(Vector3(0.0, 0.0, r + 1.5), 22.0)
 	print("Куча: сид %d, ячеек %d, вещей %d, построена за %d мс" % [dump.dump_seed, dump.field.solid_count(),
 			dump.field.sites.size(), Time.get_ticks_msec() - started])
-	_build_lamp(Vector3(-r - 1.5, 0.0, r * 0.4))
-	_build_lamp(Vector3(r + 1.0, 0.0, -r * 0.3))
-	_build_lamp(Vector3(1.5, 0.0, r + 2.5))
+	if site == null:
+		_build_lamp(Vector3(-r - 1.5, 0.0, r * 0.4))
+		_build_lamp(Vector3(r + 1.0, 0.0, -r * 0.3))
+		_build_lamp(Vector3(1.5, 0.0, r + 2.5))
 	_player = (load(PLAYER_SCENE) as PackedScene).instantiate()
-	_player.position = Vector3(0.0, 0.05, r + 1.5)
+	_player.position = Vector3(0.0, 0.05, r + (7.0 if site != null else 1.5))
 	add_child(_player)
 	_build_hint("HINT_DUMP")

@@ -157,6 +157,27 @@ def build() -> None:
             end = min(start + seg.size, hits.size)
             hits[start:end] += seg[: end - start] * rng.uniform(0.3, 1.0)
         save(f"rumble_{i + 1}", finish(mix(2.0 * body, hits), attack=0.01))
+    # костёр: ровный шум пламени с редкими щелчками, зацикленный без шва
+    rng = np.random.default_rng(700)
+    n = int(RATE * 3.0)
+    spec = np.fft.rfft(rng.standard_normal(n))
+    k = np.linspace(0.0, 1.0, spec.size)
+    spec *= 1.0 / (1.0 + (k * 40.0) ** 1.2)          # розоватый шум: у БПФ-шума стык цикла бесшовный
+    base = np.fft.irfft(spec, n)
+    base /= np.abs(base).max()
+    t = np.arange(n) / RATE
+    base *= 0.55 + 0.25 * np.sin(2 * np.pi * t / 3.0 * 2) + 0.2 * np.sin(2 * np.pi * t / 3.0 * 5 + 1.0)
+    for _ in range(22):
+        start = int(rng.uniform(0.05, 2.8) * RATE)
+        seg = noise(0.03, 0.004, rng, 0.15, 0.9) * rng.uniform(0.4, 1.0)
+        base[start:start + seg.size] += seg[: n - start]
+    loops = OUT.parent / "loops"
+    loops.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(loops / "fire_loop.wav"), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes((np.clip(base / np.abs(base).max() * 0.7, -1, 1) * 32767).astype("<i2").tobytes())
     print("Звуков:", len(list(OUT.glob("*.wav"))))
 
 

@@ -245,6 +245,25 @@ func _run() -> void:
 		body_count += chunk.shape_cells.size()
 	_check(body_count > 500 and body_count < 40000, "твёрдых ячеек рядом с игроком: %d" % body_count)
 
+	# 11. окружение свалки: по сиду, одинаковое у всех
+	var site_a := DumpSite.new()
+	_scene.add_child(site_a)
+	site_a.build(big_cfg.radius, 3)
+	var site_b := DumpSite.new()
+	_scene.add_child(site_b)
+	site_b.build(big_cfg.radius, 3)
+	_check(site_a.fires.size() == DumpSite.BONFIRES, "костров: %d" % site_a.fires.size())
+	var same_site: bool = site_a.get_child_count() == site_b.get_child_count()
+	for i: int in site_a.fires.size():
+		same_site = same_site and site_a.fires[i].position.is_equal_approx(site_b.fires[i].position)
+	_check(same_site, "одинаковый сид расставляет окружение одинаково")
+	var clear: bool = true
+	for fire: Fire in site_a.fires:
+		clear = clear and Vector2(fire.position.x, fire.position.z).length() > big_cfg.radius + 3.0 \
+				and (absf(fire.position.x) > 4.0 or fire.position.z < 0.0)
+	_check(clear, "костры стоят вне горы и не на дороге")
+	_check(site_a.booth_position.z > big_cfg.radius + 20.0, "будка сторожа у въезда")
+
 	print("Тесты кучи: прошло %d, провалено %d" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
