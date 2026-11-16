@@ -191,7 +191,7 @@ func _run() -> void:
 			"доска показывает норму и кассу")
 	_check(is_equal_approx(gvan.feel.capacity, 800.0), "без улучшений грузоподъёмность 800 кг")
 	var items: Array[ShopItem] = ShopDb.all()
-	_check(items.size() == 8 and items[0].price > 0 and tr(items[0].name_key) != items[0].name_key, "в лавке %d товара с названиями" % items.size())
+	_check(items.size() == 9 and items[0].price > 0 and tr(items[0].name_key) != items[0].name_key, "в лавке %d товара с названиями" % items.size())
 	# покупка через E у ящика
 	var crate: Node3D = garage.get_node(^"Shop_springs")
 	player.global_position = Vector3(crate.global_position.x - 1.5, 0.05, crate.global_position.z)

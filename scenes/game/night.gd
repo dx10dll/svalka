@@ -20,6 +20,7 @@ var dawn: bool = false
 ## Въехали на свалку: с этого момента идут часы
 var entered: bool = false
 var guard: Guard
+var dog: GuardDog
 ## Сколько секунд осталось до выхода сторожа на поиски (после проезда мимо него)
 var search_in: float = -1.0
 
@@ -100,6 +101,10 @@ func _populate() -> void:
 			site.gate_position + Vector3(1.0, 0.05, 5.0))
 	guard.rotation.y = PI * 0.5
 	guard.state_changed.connect(_on_guard_state)
+	dog = GuardDog.new()
+	dog.name = "Dog"
+	add_child(dog)
+	dog.setup(guard)
 	guard.caught.connect(_on_guard_caught)
 	guard.bribed.connect(_on_guard_bribed)
 	_build_hud()

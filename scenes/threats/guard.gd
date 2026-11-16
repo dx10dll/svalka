@@ -104,11 +104,11 @@ func go_home() -> void:
 
 ## Услышать шум. В будке он глух: радио орёт.
 func hear(at: Vector3, radius: float) -> void:
-	if state == State.BOOTH or state == State.RETURN or state == State.CHASE or _cooldown > 0.0:
+	if state == State.BOOTH or state == State.RETURN or state == State.CHASE:
 		return
 	if global_position.distance_to(at) > radius:
 		return
-	_goal = _ground_point(at)
+	_goal = ground_point(at)
 	_wait = config.look_around_time
 	_set_state(State.INVESTIGATE)
 
@@ -177,7 +177,7 @@ func _think(delta: float) -> float:
 				return 0.0
 			if can_see(target):
 				_lost_time = 0.0
-				_goal = _ground_point(target.global_position)
+				_goal = ground_point(target.global_position)
 			else:
 				_lost_time += delta
 				if _lost_time > config.lose_time:
@@ -214,7 +214,7 @@ func _flat_distance(to: Vector3) -> float:
 
 
 ## Точка на земле, куда он может дойти: на гору не лезет, встаёт у подножия.
-func _ground_point(at: Vector3) -> Vector3:
+func ground_point(at: Vector3) -> Vector3:
 	var flat := Vector3(at.x - heap_center.x, 0.0, at.z - heap_center.z)
 	var edge: float = heap_radius + config.heap_margin
 	if flat.length() < edge:
@@ -263,7 +263,7 @@ func _look_for_players(delta: float) -> void:
 	if suspicion >= 1.0:
 		target = seen
 		_lost_time = 0.0
-		_goal = _ground_point(seen.global_position)
+		_goal = ground_point(seen.global_position)
 		_set_state(State.CHASE)
 		spotted.emit(seen)
 
@@ -321,7 +321,15 @@ func _move(speed: float, delta: float) -> void:
 
 ## Направление шага: к цели, но в обход горы по касательной и с шагом вбок, если упёрся.
 func _steer(want: Vector3) -> Vector3:
-	var from_heap := Vector3(global_position.x - heap_center.x, 0.0, global_position.z - heap_center.z)
+	var dir: Vector3 = steer_from(global_position, want)
+	if absf(_sidestep) > 0.0:
+		dir = (dir + Vector3(-dir.z, 0.0, dir.x) * signf(_sidestep) * 1.5).normalized()
+	return dir
+
+
+## Направление шага из точки at к цели в обход горы (им же пользуется пёс).
+func steer_from(at: Vector3, want: Vector3) -> Vector3:
+	var from_heap := Vector3(at.x - heap_center.x, 0.0, at.z - heap_center.z)
 	var edge: float = heap_radius + config.heap_margin
 	var dir: Vector3 = want
 	if from_heap.length() < edge + 1.5 and want.dot(from_heap.normalized()) < 0.2:
@@ -331,8 +339,6 @@ func _steer(want: Vector3) -> Vector3:
 		if tangent.dot(want) < 0.0:
 			tangent = -tangent
 		dir = (tangent + out * clampf(edge - from_heap.length(), -0.3, 1.0)).normalized()
-	if absf(_sidestep) > 0.0:
-		dir = (dir + Vector3(-dir.z, 0.0, dir.x) * signf(_sidestep) * 1.5).normalized()
 	return dir
 
 

@@ -104,12 +104,28 @@ def bottle() -> None:
     pipeline.finish("tools/bottle", tri_budget=250)
 
 
+def sausage() -> None:
+    """Колбаса для пса: батон в сетке с хвостиками-завязками."""
+    pipeline.reset_scene()
+    b = geo.Builder("mesh")
+    b.cylinder(0.04, 0.3, (0, 0, 0.04), "paint_red_dark", axis="X", segments=7, bevel=0.012)
+    for x in (-0.1, 0.0, 0.1):
+        b.cylinder(0.042, 0.012, (x, 0, 0.04), "rag", axis="X", segments=7)
+    for sx in (-1, 1):
+        b.cylinder(0.01, 0.05, (sx * 0.17, 0, 0.04), "rag", axis="X", segments=5)
+    obj = b.build()
+    geo.collider_box("body", (0.38, 0.08, 0.08), (0, 0, 0.04))
+    geo.grip("right", (0.0, 0, 0.04), (0, 0, 0))
+    pipeline.finish("tools/sausage", tri_budget=250)
+
+
 def build() -> None:
     shovel()
     crowbar()
     metal_detector()
     headlamp()
     bottle()
+    sausage()
 
 
 if __name__ == "__main__":

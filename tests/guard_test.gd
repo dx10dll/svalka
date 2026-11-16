@@ -153,6 +153,43 @@ func _run() -> void:
 	await _wait(1.0)
 	_check(guard.state == Guard.State.BOOTH, "дошёл до будки и сел")
 
+	# 7. пёс
+	var dog: GuardDog = night.get(&"dog")
+	player.belt.fill(["", "", ""])
+	player.global_position = Vector3(0.0, 0.05, -r - 40.0)
+	dog.global_position = guard.booth_point + Vector3(2.0, 0.0, 2.0)
+	dog.target = null
+	await _wait(1.5)
+	_check(dog.state == GuardDog.State.REST and dog.global_position.distance_to(guard.booth_point) < 4.0, "сторож в будке — пёс лежит рядом")
+	guard.set(&"_cooldown", 999.0)            # сторож в этих проверках никого не ловит
+	guard.start_search()
+	await _wait(2.0)
+	_check(dog.state == GuardDog.State.HEEL, "сторож вышел — пёс идёт рядом")
+	player.global_position = dog.global_position + Vector3(-10.0, 0.05, 0.0)
+	var barks: Array[int] = [0]
+	Game.noise.connect(func(_at: Vector3, radius: float) -> void:
+		if is_equal_approx(radius, cfg.dog_bark_noise):
+			barks[0] += 1)
+	await _wait(0.6)
+	_check(dog.target == player and dog.state == GuardDog.State.TRACK, "пёс учуял игрока в 10 м без света и побежал")
+	await _wait(3.5)
+	_check(dog.state == GuardDog.State.BARK and dog.global_position.distance_to(player.global_position) < cfg.dog_bark_distance + 0.5 and barks[0] >= 2,
+			"подбежал и лает (%d раз)" % barks[0])
+	_check(guard.state == Guard.State.INVESTIGATE, "сторож идёт на лай")
+	_check(player.mode == PlayerController.Mode.NORMAL and state.stats.get(&"caught", 0) == 1, "сам пёс не ловит")
+	# колбаса
+	var sausage: Item = night.call(&"_spawn", ItemDb.tool(&"sausage"),
+			Transform3D(Basis.IDENTITY, dog.global_position + Vector3(4.0, 0.3, 3.0)))
+	await _wait(3.0)
+	_check(dog.state == GuardDog.State.EAT and dog.food == sausage, "бросили колбасу — пёс ест")
+	var barks_before: int = barks[0]
+	await _wait(2.0)
+	_check(barks[0] == barks_before, "пока ест — не лает")
+	dog.set(&"_eat_left", 0.1)
+	await _wait(0.5)
+	_check(not is_instance_valid(sausage) and dog.state != GuardDog.State.EAT, "доел — колбасы нет, снова на службе")
+	_check(Audio.has_sound(&"bark"), "лай есть")
+
 	Save.write({})
 	print("Тесты сторожа: прошло %d, провалено %d" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)

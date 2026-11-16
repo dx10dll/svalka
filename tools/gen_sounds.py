@@ -201,6 +201,18 @@ def build() -> None:
         parts.append(note)
         parts.append(np.zeros(int(RATE * 0.02)))
     save("detector_found_1", finish(np.concatenate(parts), peak=0.6))
+    # лай: два хриплых «гав»
+    rng = np.random.default_rng(920)
+    woofs = []
+    for base in (310.0, 270.0):
+        t = _t(0.16)
+        sweep = base * (1.0 + 0.9 * np.exp(-t / 0.03))
+        phase = 2 * np.pi * np.cumsum(sweep) / RATE
+        woof = np.sign(np.sin(phase)) * 0.5 + np.sin(phase * 2.0) * 0.4 + noise(0.16, 0.08, rng, 0.2, 0.9)[:len(t)] * 0.5
+        woof *= np.clip(t / 0.008, 0.0, 1.0) * np.exp(-t / 0.07)
+        woofs.append(woof)
+        woofs.append(np.zeros(int(RATE * 0.09)))
+    save("bark_1", finish(np.concatenate(woofs), peak=0.7))
     # свисток сторожа: высокая трель с горошиной
     t = _t(0.9)
     trill = np.sin(2 * np.pi * 2750 * t + 6.0 * np.sin(2 * np.pi * 38 * t)) * (0.75 + 0.25 * np.sin(2 * np.pi * 38 * t))

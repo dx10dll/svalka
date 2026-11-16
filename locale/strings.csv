@@ -168,3 +168,5 @@ SHOP_BOTTLE_DESC,сторожу в руки — и он тебя не видел
 GUARD_GIVE_BOTTLE,E — дать бутылку,E — hand over the bottle
 GUARD_BOTTLE_THANKS,Сторож: «О! Уважаю. Проезжай, я спать».,"Guard: ""Oh! Respect. Drive on, I'm off to sleep."""
 GUARD_BRIBED,Сторож взял бутылку и ушёл в будку.,The guard took the bottle and went back to his booth.
+TOOL_SAUSAGE,Колбаса,Sausage
+SHOP_SAUSAGE_DESC,брось псу (G) — он занят надолго,drop it for the dog (G) and he's busy for a while

@@ -40,3 +40,17 @@ extends Resource
 @export_group("Фонарь")
 @export var lantern_energy: float = 2.6
 @export var lantern_range: float = 12.0
+@export_group("Пёс")
+@export var dog_walk_speed: float = 2.4
+## Пёс быстрее любого игрока
+@export var dog_run_speed: float = 7.6
+## Чует игрока на таком расстоянии, свет и стены не важны, м
+@export var dog_smell_range: float = 15.0
+@export var dog_bark_distance: float = 2.6
+@export var dog_bark_every: float = 0.9
+## На сколько метров слышен лай (на него идёт сторож)
+@export var dog_bark_noise: float = 60.0
+## Чует колбасу на земле, м
+@export var dog_food_range: float = 14.0
+## Сколько секунд ест колбасу
+@export var dog_eat_time: float = 25.0
