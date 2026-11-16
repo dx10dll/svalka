@@ -20,13 +20,13 @@ func _run() -> void:
 	run.sell(1000)
 	_check(not run.quota_met() and run.quota_left() == 350, "сдали 1000 — до нормы 350")
 	run.sell(600)
-	_check(run.quota_met() and run.finish_night() == RunState.Outcome.NIGHT_PASSED and run.money == 250,
-			"норма закрыта, излишек 250 в кассе")
+	_check(run.quota_met() and run.finish_night() == RunState.Outcome.NIGHT_PASSED and run.money == eco.start_money + 250,
+			"норма закрыта, излишек 250 в кассу")
 	run.next_night()
 	_check(run.night == 2 and run.earned == 0 and run.quota() == 2250 and run.night_seed() != RunState.new(eco, 1, 7).night_seed(),
 			"вторая ночь: норма %d, свалка другая" % run.quota())
 	var copy: RunState = RunState.from_dict(eco, run.to_dict())
-	_check(copy.night == 2 and copy.money == 250 and copy.run_seed == 7, "сохранение и загрузка забега")
+	_check(copy.night == 2 and copy.money == eco.start_money + 250 and copy.run_seed == 7, "сохранение и загрузка забега")
 	run.sell(100)
 	_check(run.finish_night() == RunState.Outcome.LOST, "не добрали норму — забег окончен")
 	var long_run := RunState.new(eco, 4, 1)
@@ -50,7 +50,47 @@ func _run() -> void:
 	var player: PlayerController = night.find_child("Player", true, false)
 	var input := PlayerInput.new()
 	player.scripted_input = input
-	_check(state != null and state.night == 1 and Game.phase == Game.Phase.LANDFILL, "ночь началась, фаза «свалка»")
+	var site: DumpSite = night.get(&"site")
+	var nvan: Van = night.get(&"van")
+	_check(state != null and state.night == 1 and Game.phase == Game.Phase.ROAD, "ночь началась на дороге")
+	_check(nvan.global_position.z > site.gate_position.z + 80.0 and nvan.global_basis.z.z < -0.99,
+			"буханка на подъезде, носом к воротам, до них %.0f м" % (nvan.global_position.z - site.gate_position.z))
+	_check(nvan.global_basis.y.y > 0.99 and absf(nvan.global_position.y) < 0.3, "под подъездом есть земля")
+	_check(is_zero_approx(Game.night_time) and not night.get(&"entered"), "до ворот часы стоят")
+	_check(not site.barrier_open and absf(site.hole_position.x) > 15.0, "шлагбаум закрыт, дыра в заборе в %.0f м от ворот" % absf(site.hole_position.x))
+	# закрытые ворота и забор — стена для машины, дыра — проезд
+	var space: PhysicsDirectSpaceState3D = night.get_world_3d().direct_space_state
+	var gate_z: float = site.gate_position.z
+	var ray := PhysicsRayQueryParameters3D.create(Vector3(0.0, 0.95, gate_z + 4.0), Vector3(0.0, 0.95, gate_z - 4.0))
+	_check(not space.intersect_ray(ray).is_empty(), "стрела шлагбаума перекрывает дорогу")
+	ray = PhysicsRayQueryParameters3D.create(Vector3(-12.0, 1.0, gate_z + 4.0), Vector3(-12.0, 1.0, gate_z - 4.0))
+	_check(not space.intersect_ray(ray).is_empty(), "забор глухой")
+	ray = PhysicsRayQueryParameters3D.create(site.hole_position + Vector3(0.0, 1.0, 4.0), site.hole_position + Vector3(0.0, 1.0, -4.0))
+	_check(space.intersect_ray(ray).is_empty(), "через дыру проезд свободен")
+	var fee: int = night.call(&"guard_fee")
+	_check(fee == 100 and eco.guard_fee_for(3) == 200, "сторож берёт %d ₽, к третьей ночи 200" % fee)
+	state.money = 50
+	_check(not night.call(&"pay_guard") and not site.barrier_open and state.money == 50, "без денег сторож не пускает")
+	state.money = 200
+	# игрок жмёт E у ящика сторожа
+	var box: Node3D = night.get_node(^"GuardBox")
+	player.global_position = box.global_position + Vector3(-1.3, -0.9, 0.0)
+	var aim: Vector3 = box.global_position - (player.global_position + Vector3.UP * player.eye_height())
+	player.yaw = atan2(-aim.x, -aim.z)
+	player.pitch = atan2(aim.y, Vector2(aim.x, aim.z).length())
+	await _wait(0.4)
+	_check(player.grab.focus_use == box, "у ящика сторожа подсказка «заплатить»")
+	input.interact_pressed = true
+	await get_tree().physics_frame
+	input.interact_pressed = false
+	await _wait(1.6)
+	_check(state.guard_paid and site.barrier_open and state.money == 100, "заплатили 100 ₽ — шлагбаум открыт")
+	ray = PhysicsRayQueryParameters3D.create(Vector3(0.0, 0.95, gate_z + 4.0), Vector3(0.0, 0.95, gate_z - 4.0))
+	_check(space.intersect_ray(ray).is_empty(), "поднятая стрела не мешает")
+	_check(not night.get(&"entered"), "пока не въехали, часы стоят")
+	player.global_position = Vector3(0.0, 0.05, gate_z - 6.0)
+	await _wait(0.2)
+	_check(night.get(&"entered") and Game.phase == Game.Phase.LANDFILL and not state.sneaked, "въехали — фаза «свалка», сторож не в обиде")
 	_check(yard.global_position.z > (night.get(&"site") as DumpSite).gate_position.z, "приёмка стоит за воротами")
 	var t0: float = Game.night_time
 	await _wait(1.0)
@@ -106,13 +146,20 @@ func _run() -> void:
 	add_child(night)
 	await _wait(0.3)
 	state = night.get(&"run")
+	# мимо сторожа: пешком через дыру
+	site = night.get(&"site")
+	player = night.find_child("Player", true, false)
+	player.global_position = site.hole_position + Vector3(0.0, 0.05, -6.0)
+	await _wait(0.2)
+	_check(night.get(&"entered") and state.sneaked and not state.guard_paid and state.money == eco.start_money,
+			"через дыру — бесплатно, но мимо сторожа")
 	state.sell(state.quota() + 400)
 	night.call(&"finish")
-	_check(state.outcome == RunState.Outcome.NIGHT_PASSED and state.money == 400, "норма закрыта: в кассе 400")
+	_check(state.outcome == RunState.Outcome.NIGHT_PASSED and state.money == eco.start_money + 400, "норма закрыта: излишек 400 в кассу")
 	state.next_night()
 	Game.save_run()
 	var saved: Dictionary = Save.read().get("run", {})
-	_check(int(saved.get("night", 0)) == 2 and int(saved.get("money", 0)) == 400, "сохранена вторая ночь и касса")
+	_check(int(saved.get("night", 0)) == 2 and int(saved.get("money", 0)) == eco.start_money + 400, "сохранена вторая ночь и касса")
 	Save.write({})
 
 	# 6. гараж и лавка

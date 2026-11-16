@@ -12,6 +12,11 @@ extends Resource
 @export var night_seconds: float = 720.0
 ## С какой доли ночи светает и воет сирена (0.9 — это 04:30)
 @export var dawn_at: float = 0.9
+## Сколько денег в кармане в начале забега, ₽
+@export var start_money: int = 200
+## Сколько берёт сторож за въезд в первую ночь и на сколько дорожает каждую следующую, ₽
+@export var guard_fee: int = 100
+@export var guard_fee_per_night: int = 50
 @export_group("Цены за кг, ₽")
 @export var price_copper: int = 120
 @export var price_brass: int = 70
@@ -22,6 +27,10 @@ extends Resource
 
 func nights() -> int:
 	return quotas_for_four.size()
+
+
+func guard_fee_for(night: int) -> int:
+	return guard_fee + guard_fee_per_night * (night - 1)
 
 
 func price_per_kg(metal: ItemData.Metal) -> int:

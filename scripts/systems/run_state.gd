@@ -22,10 +22,15 @@ var stats: Dictionary[StringName, int] = {}
 var upgrades: Array[StringName] = []
 ## Что висит на поясе (id инструментов по слотам, пусто — "")
 var belt: Array[String] = ["shovel", "", ""]
+## Этой ночью заехали мимо сторожа (через дыру или под шлагбаумом)
+var sneaked: bool = false
+## Этой ночью сторожу заплачено
+var guard_paid: bool = false
 
 
 func _init(cfg: EconomyConfig, player_count: int = 1, seed_value: int = 1) -> void:
 	economy = cfg
+	money = cfg.start_money
 	players = player_count
 	run_seed = seed_value
 

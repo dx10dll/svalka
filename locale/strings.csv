@@ -61,7 +61,7 @@ YARD_NO_TRASH,Мусор не берём,We don't take trash
 YARD_EMPTY,Клади на весы,Put it on the scale
 YARD_QUOTA,Сдано %s из %s,Sold %s of %s
 NIGHT_HUD,Ночь %d из %d · %s · Сдано %s из %s · Касса %s,Night %d of %d · %s · Sold %s of %s · Cash %s
-NIGHT_START,"Ночь %d из %d. Норма %s. Приёмка за воротами, в 05:00 всё кончится.","Night %d of %d. Quota %s. The scrap yard is past the gate, it all ends at 05:00."
+NIGHT_START,"Ночь %d из %d. Норма %s. Езжай к воротам: сторожу плати или ищи дыру в заборе.","Night %d of %d. Quota %s. Drive to the gate: pay the guard or find the hole in the fence."
 NIGHT_SOLD,Сдали на %s. До нормы %s.,Sold for %s. %s to go.
 NIGHT_QUOTA_MET,Норма закрыта! Дальше — в кассу.,Quota met! The rest goes to the cash box.
 NIGHT_DAWN,04:30. Светает. Сторож включил сирену — пора на приёмку.,04:30. Dawn. The guard's siren is on — get to the yard.
@@ -121,3 +121,9 @@ SHOP_CROWBAR_DESC,поднимаешь в полтора раза больше,l
 SHOP_DETECTOR_DESC,пищит рядом с ценным в куче,beeps near loot in the heap
 SHOP_HEADLAMP_DESC,фонарь ярче и шире,a brighter, wider light
 SHOP_HINT_BELT_FULL,%s: пояс занят — освободи слот,%s: belt is full — free a slot
+GUARD_PAY,E — заплатить сторожу %s,E — pay the guard %s
+GUARD_NO_MONEY,Сторож хочет %s. Столько нет — ищи дыру в заборе.,The guard wants %s. Not enough — find the hole in the fence.
+GUARD_THANKS,Сторож: «Проезжай. Я ничего не видел». Часы пойдут за воротами.,Guard: "Go on. I saw nothing." The clock starts past the gate.
+GUARD_SNEAKED,00:00. Пролезли мимо сторожа. Он пока не заметил.,00:00. Sneaked past the guard. He hasn't noticed yet.
+NIGHT_CLOCK_STARTED,00:00. Часы пошли. В 05:00 всё кончится.,00:00. The clock is running. It all ends at 05:00.
+STAT_SNEAKED,Пролезли мимо сторожа: %d,Sneaked past the guard: %d

@@ -1,6 +1,7 @@
 extends "res://scenes/debug/playground_dump.gd"
 ## Ночь на свалке: часы от 00:00 до 05:00, норма, приёмка у ворот, итог.
-## Пока без гаража и дороги: ночь начинается у подножия горы, приёмка стоит за воротами.
+## Ночь начинается на подъезде: до ворот надо доехать. У ворот сторож и шлагбаум —
+## заплатить в ящик у будки или объехать через дыру в заборе. Часы идут с въезда.
 ## Свалка каждой ночи своя — по сиду забега и номеру ночи.
 
 signal night_finished(outcome: RunState.Outcome)
@@ -14,6 +15,8 @@ var yard: ScrapYard
 var run: RunState
 var finished: bool = false
 var dawn: bool = false
+## Въехали на свалку: с этого момента идут часы
+var entered: bool = false
 
 var _hud: Label
 var _notice: Label
@@ -41,8 +44,26 @@ func _populate() -> void:
 	run = Game.run
 	Game.night = run.night
 	Game.night_time = 0.0
-	Game.set_phase(Game.Phase.LANDFILL)
+	Game.set_phase(Game.Phase.ROAD)
+	run.sneaked = false
+	run.guard_paid = false
 	van.apply_upgrades(run.upgrades)
+	# ночь начинается на подъезде, носом к воротам
+	van.position = site.start_position + Vector3(0.0, 0.25, 0.0)
+	van.rotation.y = PI
+	_player.position = site.start_position + Vector3(2.4, 0.05, 1.0)
+	_player.rotation.y = 0.0
+	site.set_barrier(false, true)
+	var spot: UseSpot = UseSpot.make(Vector3(0.45, 0.4, 0.35), Color(0.8, 0.62, 0.1), _guard_hint, _pay_guard)
+	spot.name = "GuardBox"
+	spot.position = site.booth_spot_position
+	add_child(spot)
+	var stand := MeshInstance3D.new()
+	var stand_mesh := BoxMesh.new()
+	stand_mesh.size = Vector3(0.08, site.booth_spot_position.y, 0.08)
+	stand.mesh = stand_mesh
+	stand.position = Vector3(0.0, -site.booth_spot_position.y * 0.5, 0.0)
+	spot.add_child(stand)
 	yard = ScrapYard.new()
 	yard.name = "Yard"
 	yard.position = site.gate_position + Vector3(-7.5, 0.0, 9.0)
@@ -60,7 +81,47 @@ func _populate() -> void:
 	dump.collapsed.connect(func(_center: Vector3, _pieces: int) -> void: run.count(&"collapses"))
 	get_tree().node_added.connect(_on_node_added)
 	_build_hud()
-	_say(tr("NIGHT_START") % [run.night, run.economy.nights(), Fmt.rub(run.quota())], 7.0)
+	_say(tr("NIGHT_START") % [run.night, run.economy.nights(), Fmt.rub(run.quota())], 8.0)
+
+
+func guard_fee() -> int:
+	return run.economy.guard_fee_for(run.night)
+
+
+func _guard_hint() -> String:
+	if run.guard_paid or finished:
+		return ""
+	if run.money < guard_fee():
+		return tr("GUARD_NO_MONEY") % Fmt.rub(guard_fee())
+	return tr("GUARD_PAY") % Fmt.rub(guard_fee())
+
+
+func _pay_guard(_player_who: PlayerController) -> void:
+	pay_guard()
+
+
+## Заплатить сторожу за въезд: шлагбаум поднимается.
+func pay_guard() -> bool:
+	if run.guard_paid or not run.pay(guard_fee()):
+		Audio.play_at(&"deny", site.booth_spot_position)
+		return false
+	run.guard_paid = true
+	site.set_barrier(true)
+	Audio.play_at(&"cash", site.booth_spot_position)
+	_say(tr("GUARD_THANKS"))
+	return true
+
+
+## Кто-то пересёк линию ворот: часы пошли. Без оплаты — значит, пролезли.
+func _enter() -> void:
+	entered = true
+	Game.set_phase(Game.Phase.LANDFILL)
+	if not run.guard_paid:
+		run.sneaked = true
+		run.count(&"sneaked")
+		_say(tr("GUARD_SNEAKED"), 6.0)
+	else:
+		_say(tr("NIGHT_CLOCK_STARTED"))
 
 
 func _on_node_added(node: Node) -> void:
@@ -116,6 +177,11 @@ func _say(text: String, seconds: float = 4.0) -> void:
 func _physics_process(delta: float) -> void:
 	if finished:
 		return
+	if not entered:
+		var line: float = site.gate_position.z - 4.5   # за шлагбаумом
+		if _player.global_position.z < line or van.global_position.z < line:
+			_enter()
+		return
 	Game.night_time += delta / run.economy.night_seconds
 	if not dawn and Game.night_time >= run.economy.dawn_at:
 		dawn = true
@@ -166,7 +232,7 @@ func finish() -> void:
 			lines.append(tr("SUMMARY_SHORT") % [Fmt.rub(earned), Fmt.rub(quota)])
 	lines.append("")
 	for stat: Array in [[&"buried", "STAT_BURIED"], [&"collapses", "STAT_COLLAPSES"], [&"broken", "STAT_BROKEN"],
-			[&"falls", "STAT_FALLS"], [&"sold_items", "STAT_SOLD"]]:
+			[&"falls", "STAT_FALLS"], [&"sold_items", "STAT_SOLD"], [&"sneaked", "STAT_SNEAKED"]]:
 		var n: int = run.stats.get(stat[0], 0)
 		if n > 0:
 			lines.append(tr(stat[1]) % n)
