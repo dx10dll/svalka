@@ -7,6 +7,7 @@ signal spawn_requested(item_data: ItemData)
 signal clear_requested
 
 const SCENES: Array = [
+	["SCENE_NIGHT", "res://scenes/game/night.tscn"],
 	["SCENE_MOUNTAIN", "res://scenes/debug/playground_mountain.tscn"],
 	["SCENE_DUMP", "res://scenes/debug/playground_dump.tscn"],
 	["SCENE_STAGE1", "res://scenes/debug/playground_stage1.tscn"],

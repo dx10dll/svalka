@@ -108,6 +108,7 @@ func _build_booth() -> void:
 	post.name = "BarrierPost"
 	var arm := _box(Vector3(ROAD_WIDTH + 0.6, 0.1, 0.1), booth_position + Vector3(-1.6 - ROAD_WIDTH * 0.45, 2.0, 3.2), Color(0.75, 0.2, 0.15))
 	arm.rotation.z = -0.5
+	arm.collision_layer = 0      # поднятая стрела не мешает машине
 	_lamp(booth_position + Vector3(1.2, 0.0, 3.6), PI)
 
 

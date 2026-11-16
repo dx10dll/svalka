@@ -16,11 +16,20 @@ func _config_path() -> String:
 	return Dump.CONFIG_PATH
 
 
+func _dump_seed() -> int:
+	return 1
+
+
+## Подсказка внизу экрана (пустая строка — без неё).
+func _hint_key() -> String:
+	return "HINT_DUMP"
+
+
 func _populate() -> void:
 	dump = Dump.new()
 	dump.name = "Dump"
 	dump.config = load(_config_path())
-	dump.dump_seed = 1
+	dump.dump_seed = _dump_seed()
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--dump-seed="):
 			dump.dump_seed = int(arg.trim_prefix("--dump-seed="))
@@ -67,4 +76,5 @@ func _populate() -> void:
 	van.name = "Van"
 	van.position = Vector3(3.2, 0.25, r + 5.5) if site != null else Vector3(5.0, 0.25, r + 5.0)
 	add_child(van)
-	_build_hint("HINT_DUMP")
+	if not _hint_key().is_empty():
+		_build_hint(_hint_key())

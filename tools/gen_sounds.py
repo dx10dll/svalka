@@ -178,6 +178,22 @@ def build() -> None:
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes((np.clip(base / np.abs(base).max() * 0.7, -1, 1) * 32767).astype("<i2").tobytes())
+    # сирена сторожа: ручная, воющая вверх-вниз, 4 с
+    t = _t(4.0)
+    sweep = 520.0 + 260.0 * np.sin(2 * np.pi * t / 2.0 - np.pi / 2)
+    phase = 2 * np.pi * np.cumsum(sweep) / RATE
+    siren = np.sin(phase) + 0.45 * np.sin(2 * phase) + 0.2 * np.sin(3 * phase)
+    siren *= np.clip(t / 0.6, 0.0, 1.0) * np.clip((4.0 - t) / 0.8, 0.0, 1.0)
+    save("siren_1", finish(siren, peak=0.7))
+    # касса: звон монет и щелчок ящика
+    rng = np.random.default_rng(900)
+    save("cash_1", finish(mix(modes(0.7, [(2100, 1.0, 0.25), (3150, 0.7, 0.2), (4400, 0.5, 0.15), (5900, 0.3, 0.1)], rng),
+                             np.concatenate([np.zeros(int(RATE * 0.09)), modes(0.5, [(2500, 0.9, 0.2), (3700, 0.6, 0.15)], rng)]),
+                             noise(0.05, 0.01, rng, 0.2, 0.8) * 0.6)))
+    # гудок «не то»: низкий двойной
+    t = _t(0.35)
+    buzz = np.sign(np.sin(2 * np.pi * 140 * t)) * 0.5 * (np.sin(2 * np.pi * 3 * t) > -0.3)
+    save("deny_1", finish(buzz, peak=0.5))
     # мотор: вспышки четырёх цилиндров на холостых, целое число периодов — цикл без шва
     rng = np.random.default_rng(800)
     n = RATE

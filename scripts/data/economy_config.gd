@@ -8,6 +8,10 @@ extends Resource
 @export var player_multipliers: PackedFloat32Array = [0.45, 0.65, 0.85, 1.0]
 ## Округление нормы, ₽
 @export var quota_rounding: int = 50
+## Сколько секунд длится ночь на свалке (00:00–05:00 на часах)
+@export var night_seconds: float = 720.0
+## С какой доли ночи светает и воет сирена (0.9 — это 04:30)
+@export var dawn_at: float = 0.9
 @export_group("Цены за кг, ₽")
 @export var price_copper: int = 120
 @export var price_brass: int = 70

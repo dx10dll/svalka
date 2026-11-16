@@ -12,6 +12,8 @@ enum Phase { GARAGE, ROAD, LANDFILL, WEIGHING, SUMMARY }
 const ECONOMY_PATH: String = "res://data/economy.tres"
 
 var economy: EconomyConfig
+## Текущий забег (создаётся сценой ночи)
+var run: RunState
 var phase: Phase = Phase.GARAGE
 var night: int = 1
 var player_count: int = 1
@@ -37,6 +39,22 @@ func set_phase(p: Phase) -> void:
 func set_night_time(t: float) -> void:
 	night_time = clampf(t, 0.0, 1.0)
 	night_time_changed.emit(night_time)
+
+
+## Начать новый забег или продолжить сохранённый.
+func start_run(continue_saved: bool) -> RunState:
+	var saved: Dictionary = Save.read().get("run", {}) if continue_saved else {}
+	if saved.is_empty():
+		run = RunState.new(economy, player_count, randi_range(1, 99999))
+	else:
+		run = RunState.from_dict(economy, saved)
+	night = run.night
+	return run
+
+
+func save_run() -> void:
+	Save.write({"run": run.to_dict()} if run != null and run.outcome != RunState.Outcome.LOST \
+			and run.outcome != RunState.Outcome.WON else {})
 
 
 ## Часы свалки строкой: 0.0 -> "00:00", 1.0 -> "05:00".

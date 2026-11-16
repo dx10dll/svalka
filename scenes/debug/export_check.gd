@@ -23,5 +23,12 @@ func _ready() -> void:
 	if feel == null or feel.capacity <= 0.0 or player == null:
 		print("  ПРОВАЛ: числа машины или игрока не загрузились")
 		failed += 1
+	var run := RunState.new(load("res://data/economy.tres"), 1, 1)
+	if run.quota() != 1350 or run.economy.night_seconds < 60.0:
+		print("  ПРОВАЛ: экономика не загрузилась (норма %d)" % run.quota())
+		failed += 1
+	if load("res://scenes/game/night.tscn") == null:
+		print("  ПРОВАЛ: нет сцены ночи")
+		failed += 1
 	print("Проверка сборки: провалено %d" % failed)
 	get_tree().quit(1 if failed > 0 else 0)

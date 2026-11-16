@@ -42,6 +42,7 @@ jobs:
           godot --headless --path . --fixed-fps 60 res://tests/carry_test.tscn
           godot --headless --path . --fixed-fps 60 res://tests/dump_test.tscn
           godot --headless --path . --fixed-fps 60 res://tests/van_test.tscn
+          godot --headless --path . --fixed-fps 60 res://tests/night_test.tscn
 
       - name: Проверка упакованной игры
         run: |

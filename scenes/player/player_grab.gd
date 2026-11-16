@@ -23,8 +23,11 @@ var focus: RigidBody3D
 ## Куча и её ячейка под прицелом (можно вытащить кусок), если focus пуст
 var focus_dump: Dump
 var focus_cell: Vector3i = Dump.NO_CELL
-## Машина под прицелом и что с ней можно сделать клавишей E ({} — ничего)
+## Машина под прицелом (её ещё можно толкать)
 var focus_van: Van
+## То, с чем можно что-то сделать клавишей E (машина, весы, доска): у узла есть
+## interaction_at(точка) -> {"hint", "action"} и interact(игрок, действие)
+var focus_use: Node
 var focus_action: Dictionary = {}
 ## Упёрлись руками в машину и толкаем
 var pushing: bool = false
@@ -90,14 +93,15 @@ func tick(input: PlayerInput, delta: float) -> void:
 		release(false)
 		focus = null
 		focus_van = null
+		focus_use = null
 		pushing = false
 		_update_highlight()
 		_was_grab_held = input.grab_held
 		return
 	_update_focus()
 	_update_highlight()
-	if input.interact_pressed and focus_van != null and not focus_action.is_empty():
-		focus_van.interact(_player, focus_action["action"])
+	if input.interact_pressed and focus_use != null and not focus_action.is_empty():
+		focus_use.call(&"interact", _player, focus_action["action"])
 		return
 	pushing = held == null and focus_van != null and input.grab_held
 	if pushing:
@@ -178,6 +182,7 @@ func _update_focus() -> void:
 	focus_dump = null
 	focus_cell = Dump.NO_CELL
 	focus_van = null
+	focus_use = null
 	focus_action = {}
 	if held != null:
 		return
@@ -197,14 +202,21 @@ func _update_focus() -> void:
 		if hit["collider"] is Van:
 			if focus_van == null and focus_dump == null:
 				focus_van = hit["collider"]
+				focus_use = focus_van
 				_van_point = hit["position"]
 				focus_action = focus_van.interaction_at(hit["position"])
+			continue
+		if (hit["collider"] as Object).has_method(&"interaction_at"):
+			if focus_use == null and focus_dump == null:
+				focus_use = hit["collider"]
+				focus_action = focus_use.call(&"interaction_at", hit["position"])
 			continue
 		var body: RigidBody3D = hit["collider"] as RigidBody3D
 		if body != null and body.has_meta(&"strapped_to"):
 			# притянутый ремнями груз — часть машины: руками не взять
 			if focus_van == null and focus_dump == null:
 				focus_van = body.get_meta(&"strapped_to")
+				focus_use = focus_van
 				_van_point = hit["position"]
 				focus_action = {"hint": "HINT_VAN_STRAPS_OFF", "action": &"straps"}
 			continue

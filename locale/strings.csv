@@ -52,3 +52,30 @@ HINT_VAN_STRAPS_OFF,E — отпустить ремни,E to release the straps
 HINT_VAN_PUSH,ЛКМ — толкать,LMB to push
 HUD_VAN_LEAVE_PASSENGER,E — выйти,E get out
 HUD_VAN_STALLED,ЗАГЛОХЛА · отпусти газ и нажми снова,STALLED · release the gas and press again
+HINT_YARD_SELL,E — сдать всё с весов,E to sell everything on the scale
+HINT_YARD_FINISH,E — закончить ночь,E to end the night
+HINT_YARD_FINISH_EARLY,E — закончить ночь (норма не закрыта!),E to end the night (quota not met!)
+YARD_TITLE,ПРИЁМКА,SCRAP YARD
+YARD_ON_SCALE,На весах: %d шт · %s · %s,On the scale: %d pcs · %s · %s
+YARD_NO_TRASH,Мусор не берём,We don't take trash
+YARD_EMPTY,Клади на весы,Put it on the scale
+YARD_QUOTA,Сдано %s из %s,Sold %s of %s
+NIGHT_HUD,Ночь %d из %d · %s · Сдано %s из %s · Касса %s,Night %d of %d · %s · Sold %s of %s · Cash %s
+NIGHT_START,"Ночь %d из %d. Норма %s. Приёмка за воротами, в 05:00 всё кончится.","Night %d of %d. Quota %s. The scrap yard is past the gate, it all ends at 05:00."
+NIGHT_SOLD,Сдали на %s. До нормы %s.,Sold for %s. %s to go.
+NIGHT_QUOTA_MET,Норма закрыта! Дальше — в кассу.,Quota met! The rest goes to the cash box.
+NIGHT_DAWN,04:30. Светает. Сторож включил сирену — пора на приёмку.,04:30. Dawn. The guard's siren is on — get to the yard.
+NIGHT_TOO_LATE,05:00. Милиция. Что не сдали — пропало.,05:00. Police. Anything unsold is gone.
+SUMMARY_PASSED,Ночь %d закрыта,Night %d done
+SUMMARY_WON,Долг закрыт. Буханка ваша!,The debt is paid. The van is yours!
+SUMMARY_LOST,Норма не закрыта. Хозяин забрал буханку.,Quota missed. The Boss took the van.
+SUMMARY_MONEY,Сдано %s при норме %s. В кассу: %s,Sold %s against a quota of %s. To the cash box: %s
+SUMMARY_SHORT,Сдано %s при норме %s,Sold %s against a quota of %s
+SUMMARY_NEXT,E — следующая ночь,E — next night
+SUMMARY_AGAIN,E — новый забег,E — new run
+STAT_BURIED,Завалило: %d раз,Buried: %d times
+STAT_COLLAPSES,Завалов устроено: %d,Collapses caused: %d
+STAT_BROKEN,Разбито вещей: %d,Things broken: %d
+STAT_FALLS,Падений: %d,Falls: %d
+STAT_SOLD,Сдано вещей: %d,Items sold: %d
+SCENE_NIGHT,Ночь (забег),Night (run)

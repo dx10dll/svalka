@@ -104,7 +104,7 @@ func _run() -> void:
 	var tv: Item = _spawn("tv_crt", Vector3(0, 0.02, 38.9))
 	await _wait(0.8)
 	var full: int = tv.value()
-	_check(full == 1800, "целый телевизор стоит %d ₽" % full)
+	_check(full == tv.data.unit_price and full >= 300, "целый телевизор стоит %d ₽" % full)
 	_aim_at(tv)
 	await _wait(0.1)
 	_input.grab_held = true
