@@ -36,11 +36,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_slot_queued = 2
 	elif event.is_action_pressed(&"slot_3"):
 		_slot_queued = 3
-	elif event.is_action_pressed(&"pause"):
-		var captured: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
 	elif event is InputEventMouseButton and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED \
-			and (event as InputEventMouseButton).pressed and not DebugMenu.is_open():
+			and (event as InputEventMouseButton).pressed and not DebugMenu.is_open() and not PauseMenu.is_open():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -48,7 +45,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func take_look(delta: float) -> Vector2:
 	var out: Vector2 = _look
 	_look = Vector2.ZERO
-	if enabled and not DebugMenu.is_open():
+	if enabled and not DebugMenu.is_open() and not PauseMenu.is_open():
 		var stick: Vector2 = Input.get_vector(&"look_left", &"look_right", &"look_up", &"look_down")
 		var pad_sens: float = Settings.get_value("controls", "pad_sensitivity")
 		out += stick * stick.length() * pad_sens * delta  # квадратичная кривая: точнее у центра

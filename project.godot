@@ -19,6 +19,7 @@ Voice="*res://scripts/autoload/voice.gd"
 Audio="*res://scripts/autoload/audio.gd"
 DebugMenu="*res://scenes/debug/debug_menu.gd"
 Shot="*res://scripts/debug/screenshot_tool.gd"
+PauseMenu="*res://scenes/ui/pause_menu.gd"
 
 [debug]
 

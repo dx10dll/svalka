@@ -10,7 +10,7 @@ const DEFAULTS: Dictionary = {
 	"game": {"locale": "ru"},
 	"controls": {"mouse_sensitivity": 0.0022, "pad_sensitivity": 2.6, "invert_y": false},
 	"audio": {"master": 1.0, "voice": 1.0, "music": 0.7},
-	"video": {"retro_filter": false},
+	"video": {"retro_filter": false, "fullscreen": false},
 	"voice": {"push_to_talk": false, "allow_gul_echo": true},
 }
 

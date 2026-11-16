@@ -18,6 +18,10 @@ var _board: Label3D
 var _refresh: float = 0.0
 var _speech: Label3D
 var _speech_time: float = 0.0
+## Что уже лежало на весах при прошлой проверке (id узлов)
+var _seen: Dictionary[int, bool] = {}
+## Ключ последней реплики про вещь (для тестов)
+var last_comment: String = ""
 var _lamp: OmniLight3D
 var _flash: float = 0.0
 
@@ -218,6 +222,38 @@ func _process(delta: float) -> void:
 	if _refresh <= 0.0 and run != null:
 		_refresh = 0.25
 		_update_board()
+		_notice_new_items()
+
+
+## Приёмщик бурчит про каждую новую вещь на весах.
+func _notice_new_items() -> void:
+	var now: Dictionary[int, bool] = {}
+	var fresh: Item = null
+	for item: Item in items_on_scale():
+		var id: int = item.get_instance_id()
+		now[id] = true
+		if not _seen.has(id):
+			fresh = item
+	_seen = now
+	if fresh != null:
+		last_comment = comment_for(fresh)
+		say(tr(last_comment))
+
+
+## Ключ реплики про вещь: сначала особые случаи, потом своя реплика вещи, потом общая.
+func comment_for(item: Item) -> String:
+	if item.data.is_tool():
+		return "YARD_SEE_TOOL"
+	if item.data.is_trash():
+		return "YARD_SEE_TRASH"
+	if item.data.is_fragile() and item.integrity <= 0.0:
+		return "YARD_SEE_BROKEN"
+	if item.spilled:
+		return "YARD_SEE_TORN"
+	var own: String = "YARD_SEE_" + String(item.data.id).to_upper()
+	if tr(own) != own:
+		return own
+	return "YARD_SEE_HEAVY" if item.mass >= 40.0 else "YARD_SEE_SMALL"
 
 
 func _update_board() -> void:

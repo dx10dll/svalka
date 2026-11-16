@@ -25,9 +25,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_turn(-motion.relative.x * sens, -motion.relative.y * sens)
 	elif event.is_action_pressed(&"grab") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_shove()
-	elif event.is_action_pressed(&"pause"):
-		var captured: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
 
 
 func _process(delta: float) -> void:

@@ -38,6 +38,13 @@ func _run() -> void:
 		elif true:
 			_check(out == RunState.Outcome.WON and long_run.night == 7, "семь закрытых ночей — победа")
 
+	# меню паузы
+	_check(not PauseMenu.is_open(), "меню паузы закрыто")
+	PauseMenu.set_open(true)
+	_check(PauseMenu.is_open() and get_tree().paused, "Esc — меню открыто, мир на паузе")
+	PauseMenu.set_open(false)
+	_check(not get_tree().paused, "закрыли — игра идёт")
+
 	# 2. сцена ночи
 	Save.write({})
 	Game.run = null
@@ -104,6 +111,10 @@ func _run() -> void:
 	var bag: Item = night.call(&"_spawn", load("res://data/junk/bag_black.tres"),
 			Transform3D(Basis.IDENTITY, yard.global_position + Vector3(0.6, 0.5, -0.8)))
 	await _wait(1.5)
+	_check(yard.last_comment.begins_with("YARD_SEE_") and tr(yard.last_comment) != yard.last_comment,
+			"приёмщик бурчит про вещь: «%s»" % tr(yard.last_comment))
+	_check(yard.comment_for(tv) == "YARD_SEE_TV_CRT" and yard.comment_for(bag) == "YARD_SEE_TRASH"
+			and yard.comment_for(radiator) == "YARD_SEE_HEAVY", "у телевизора своя реплика, у мусора и тяжёлого — общие")
 	var w: Dictionary = yard.weigh()
 	var expected: int = radiator.value() + tv.value()
 	_check(w["count"] == 2 and w["trash"] == 1 and w["value"] == expected and absf(w["mass"] - 95.0) < 0.5,

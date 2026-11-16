@@ -135,3 +135,24 @@ HUD_RIDE,W — оттолкнуться · A D — подруливать · E �
 NIGHT_OF,Ночь %d из %d,Night %d of %d
 NIGHT_QUOTA,Норма  %s / %s,Quota  %s / %s
 NIGHT_CASH,Касса  %s,Cash  %s
+PAUSE_TITLE,Пауза,Paused
+PAUSE_RESUME,Продолжить,Resume
+PAUSE_SENSITIVITY,Чувствительность мыши,Mouse sensitivity
+PAUSE_VOLUME,Громкость,Volume
+PAUSE_FULLSCREEN,Во весь экран,Fullscreen
+PAUSE_QUIT,Выйти из игры,Quit game
+YARD_SEE_TOOL,Инструмент свой забери. Не принимаю.,Take your tool back. Not buying.
+YARD_SEE_TRASH,Это мусор. Убери.,That's trash. Take it away.
+YARD_SEE_BROKEN,Разбили. Пойдёт как лом.,Smashed. Scrap price.
+YARD_SEE_TORN,Мешок драный. Банки где?,The bag's torn. Where are the cans?
+YARD_SEE_HEAVY,Тяжёлая. Весы не сломай.,Heavy one. Don't break my scale.
+YARD_SEE_SMALL,Мелочь. Ну клади.,"Small stuff. Fine, put it down."
+YARD_SEE_SAMOVAR,О! Самовар. Целый — это деньги.,Oh! A samovar. Intact means money.
+YARD_SEE_TV_CRT,Телевизор. Кинескоп цел? Тогда беру.,A TV. Tube intact? Then I'll take it.
+YARD_SEE_CABLE_COIL,Медь. Вот это разговор.,Copper. Now we're talking.
+YARD_SEE_BATHTUB,Ванна. Вы её на себе пёрли?,A bathtub. You hauled that by hand?
+YARD_SEE_CAR_BATTERY,Аккумулятор. Ставь ровно: кислота.,A battery. Keep it upright: acid.
+YARD_SEE_FRIDGE,Холодильник. Пустой? Проверю.,A fridge. Empty? I'll check.
+YARD_SEE_CAN,По одной банке носить будете?,Bringing them one can at a time?
+YARD_SEE_RADIO,Приёмник. Старый. Хорошо.,A radio. Old. Good.
+YARD_SEE_CAMERA,Фотоаппарат. Аккуратнее с ним.,A camera. Careful with it.
