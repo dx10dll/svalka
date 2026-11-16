@@ -157,7 +157,9 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	_input = scripted_input if scripted_input != null else _reader.sample()
 	if _input.slot_pressed > 0 and mode == Mode.NORMAL:
-		belt.use_slot(_input.slot_pressed - 1)
+		belt.select(_input.slot_pressed - 2)      # 1 — руки, 2–4 — слоты пояса
+	if _input.drop_pressed and mode == Mode.NORMAL:
+		belt.drop_active()
 	grab.tick(_input, delta)
 	if _input.flashlight_pressed:
 		if mode == Mode.SEATED and vehicle != null and vehicle.driver == self:

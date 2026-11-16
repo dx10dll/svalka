@@ -11,6 +11,7 @@ var _prompt: PanelContainer
 var _prompt_rows: VBoxContainer
 var _prompt_text: String = ""
 var _prompt_low: bool = false
+var _prompt_color: Color = Ui.TEXT
 var _charge: ProgressBar
 ## Сколько секунд сидим: подсказка по клавишам потом прячется
 var _seat_time: float = 0.0
@@ -19,6 +20,8 @@ var _buried: ColorRect
 var _buried_material: ShaderMaterial
 var _struggle_shake: float = 0.0
 var _belt: HBoxContainer
+var _detector: PanelContainer
+var _detector_bar: ProgressBar
 
 
 func setup(grab: PlayerGrab) -> void:
@@ -72,6 +75,22 @@ func setup(grab: PlayerGrab) -> void:
 		_player.belt.changed.connect(_update_belt)
 		_update_belt()
 
+	# шкала металлоискателя: над поясом, видна только с прибором в руках
+	_detector = Ui.panel(Ui.BACK, 6.0)
+	_detector.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_detector.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_detector.offset_left = 14.0
+	_detector.offset_bottom = -48.0
+	_detector.visible = false
+	root.add_child(_detector)
+	var detector_row := HBoxContainer.new()
+	detector_row.add_theme_constant_override(&"separation", 8)
+	_detector.add_child(detector_row)
+	detector_row.add_child(Ui.label(tr("HUD_DETECTOR"), Ui.SIZE_SMALL, Ui.DIM))
+	_detector_bar = Ui.bar(120.0, 6.0, Ui.GOOD)
+	_detector_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	detector_row.add_child(_detector_bar)
+
 	_charge = Ui.bar(110.0, 4.0)
 	_charge.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_charge.offset_left = -55.0
@@ -84,9 +103,10 @@ func setup(grab: PlayerGrab) -> void:
 
 ## Показать подсказку. Первая строка без клавиш — заголовок, остальные — ряды клавиш.
 ## low — прижать к низу экрана (за рулём), иначе под прицелом.
-func _show(text: String, low: bool = false) -> void:
-	if text == _prompt_text and low == _prompt_low:
+func _show(text: String, low: bool = false, title_color: Color = Ui.TEXT) -> void:
+	if text == _prompt_text and low == _prompt_low and title_color == _prompt_color:
 		return
+	_prompt_color = title_color
 	_prompt_text = text
 	_prompt_low = low
 	for child: Node in _prompt_rows.get_children():
@@ -100,7 +120,7 @@ func _show(text: String, low: bool = false) -> void:
 		if line.is_empty():
 			continue
 		if first and not line.contains(" — "):
-			var title: Label = Ui.label(line, Ui.SIZE_TEXT)
+			var title: Label = Ui.label(line, Ui.SIZE_TEXT, title_color)
 			title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_prompt_rows.add_child(title)
 		else:
@@ -151,13 +171,17 @@ func _process(delta: float) -> void:
 	var target: RigidBody3D = _grab.held if _grab.held != null else _grab.focus
 	_dot.color = Ui.ACCENT if target != null or _grab.focus_dump != null else Color(1, 1, 1, 0.55)
 	var text: String = ""
+	var title_color: Color = Ui.TEXT
 	if target != null and is_instance_valid(target):
 		text = _describe(target)
+		if target is Item:
+			title_color = (target as Item).tier_color()
 		if _grab.held == null and not _grab.focus_action.is_empty():
 			text += "\n" + _grab.focus_action.get("text", tr(_grab.focus_action.get("hint", "")))
 	elif _grab.focus_dump != null:
 		var junk: ItemData = _grab.focus_dump.junk_at(_grab.focus_cell)
-		text = (tr(junk.name_key) + "\n" if junk != null else "") + tr("HUD_DIG_HINT")
+		text = tr(junk.name_key) if junk != null else ""
+		title_color = Ui.TRASH_COLOR
 	elif _grab.focus_van != null:
 		_dot.color = Ui.ACCENT
 		text = _cargo_line(_grab.focus_van)
@@ -168,7 +192,11 @@ func _process(delta: float) -> void:
 	elif _grab.focus_use != null and not _grab.focus_action.is_empty():
 		_dot.color = Ui.ACCENT
 		text = _grab.focus_action.get("text", tr(_grab.focus_action.get("hint", "")))
-	_show(text)
+	_show(text, false, title_color)
+	var scanning: bool = _player != null and _player.belt.active_tool() == &"metal_detector"
+	_detector.visible = scanning
+	if scanning:
+		_detector_bar.value = lerpf(_detector_bar.value, _player.belt.signal_strength(), 1.0 - exp(-8.0 * delta))
 	_charge.visible = _grab.throw_charge > 0.02
 	_charge.value = _grab.throw_charge
 
@@ -177,16 +205,28 @@ func _update_belt() -> void:
 	for child: Node in _belt.get_children():
 		_belt.remove_child(child)
 		child.queue_free()
+	_belt.add_child(_belt_cell(1, tr("HUD_HANDS"), true, _player.belt.active < 0))
 	for i: int in PlayerBelt.SLOTS:
 		var item: Item = _player.belt.slots[i]
-		var cell: PanelContainer = Ui.panel(Ui.BACK if item != null else Color(0.05, 0.05, 0.06, 0.4), 6.0)
-		cell.custom_minimum_size = Vector2(92, 0)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override(&"separation", 6)
-		row.add_child(Ui.label(str(i + 1), Ui.SIZE_SMALL, Ui.ACCENT))
-		row.add_child(Ui.label(tr(item.data.name_key) if item != null else "—", Ui.SIZE_SMALL, Ui.TEXT if item != null else Ui.DIM))
-		cell.add_child(row)
-		_belt.add_child(cell)
+		_belt.add_child(_belt_cell(i + 2, tr(item.data.name_key) if item != null else "—", item != null, _player.belt.active == i))
+
+
+## Ячейка пояса: номер клавиши и название; выбранная — в янтарной рамке.
+func _belt_cell(number: int, text: String, filled: bool, selected: bool) -> PanelContainer:
+	var cell := PanelContainer.new()
+	var style: StyleBoxFlat = Ui.box(Ui.BACK if filled else Color(0.05, 0.05, 0.06, 0.4), 6.0)
+	if selected:
+		style.border_color = Ui.ACCENT
+		style.set_border_width_all(1)
+		style.bg_color = Color(0.16, 0.12, 0.05, 0.85)
+	cell.add_theme_stylebox_override(&"panel", style)
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", 6)
+	row.add_child(Ui.label(str(number), Ui.SIZE_SMALL, Ui.ACCENT))
+	row.add_child(Ui.label(text, Ui.SIZE_SMALL, (Ui.ACCENT if selected else Ui.TEXT) if filled else Ui.DIM))
+	cell.add_child(row)
+	return cell
 
 
 ## Груз машины: сколько лежит и сколько можно; перегруз — с пометкой.
@@ -198,19 +238,9 @@ func _cargo_line(van: Van) -> String:
 	return line
 
 
+## Под прицелом — только название вещи; ценность видно по цвету обводки и названия.
 func _describe(body: RigidBody3D) -> String:
-	var parts: PackedStringArray = []
 	var item: Item = body as Item
 	if item != null and item.data != null:
-		parts.append(tr(item.data.name_key))
-	parts.append(Fmt.kg(body.mass))
-	if item != null and item.data != null and not item.data.is_trash() and not item.data.is_tool():
-		parts.append(Fmt.rub(item.value()))
-	var line: String = " · ".join(parts)
-	if not _grab.can_lift(body.mass):
-		line += "\n" + tr("HUD_TOO_HEAVY")
-	elif _grab.held == null:
-		line += "\n" + tr("HUD_TOOL_HINT" if item != null and item.data.is_tool() else "HUD_GRAB_HINT")
-	elif item != null and _player != null and _player.belt.can_stow(item) and _player.belt.free_slot() >= 0:
-		line += "\n" + tr("HUD_BELT_HINT")
-	return line
+		return tr(item.data.name_key)
+	return Fmt.kg(body.mass)

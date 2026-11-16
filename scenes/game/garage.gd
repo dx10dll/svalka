@@ -15,7 +15,17 @@ var leaving: bool = false
 
 var _board: Label3D
 var _player: PlayerController
+const BENCH_HEIGHT: float = 0.9
+## Шаг между товарами на верстаке, м
+const SHOP_STEP: float = 1.45
+const UPGRADE_MODELS: Dictionary[StringName, String] = {
+	&"springs": "res://assets/models/props/shop_springs.glb",
+	&"tyres": "res://assets/models/props/shop_tyre.glb",
+	&"searchlight": "res://assets/models/props/shop_searchlight.glb",
+}
+
 var _price_tags: Dictionary[StringName, Label3D] = {}
+var _goods: Dictionary[StringName, Node3D] = {}
 
 
 func _populate() -> void:
@@ -104,45 +114,91 @@ func _update_board() -> void:
 	_board.text = tr("GARAGE_BOARD") % [run.night, run.economy.nights(), Fmt.rub(run.quota()), Fmt.rub(run.money)]
 
 
-## Лавка у правой стены: ящик на каждый товар, над ним название и цена.
+## Лавка у правой стены: верстак, на нём лежат сами товары, перед каждым — ценник.
 func _build_shop() -> void:
-	var title: Label3D = _text(Vector3(ROOM.x * 0.5 - 0.12, 3.2, -2.5), -PI * 0.5, 64)
-	title.text = tr("SHOP_TITLE")
-	title.modulate = Color(1.0, 0.75, 0.35)
 	var items: Array[ShopItem] = ShopDb.all()
+	var x: float = ROOM.x * 0.5 - 0.6
+	var from: float = -6.6
+	var length: float = (items.size() - 1) * SHOP_STEP + 1.6
+	var mid: float = from + (items.size() - 1) * SHOP_STEP * 0.5
+	_slab(Vector3(1.0, 0.07, length), Vector3(x, BENCH_HEIGHT - 0.035, mid), Color(0.36, 0.26, 0.16))      # столешница
+	_slab(Vector3(0.9, 0.05, length - 0.2), Vector3(x, 0.3, mid), Color(0.3, 0.22, 0.14))                 # нижняя полка
+	for z: float in [mid - length * 0.5 + 0.1, mid, mid + length * 0.5 - 0.1]:
+		for dx: float in [-0.42, 0.42]:
+			_slab(Vector3(0.08, BENCH_HEIGHT - 0.07, 0.08), Vector3(x + dx, (BENCH_HEIGHT - 0.07) * 0.5, z), Color(0.25, 0.18, 0.12))
+	var lamp := SpotLight3D.new()                 # лампа над верстаком: товар должен быть виден
+	lamp.light_color = Color(1.0, 0.9, 0.7)
+	lamp.light_energy = 6.0
+	lamp.spot_range = 7.0
+	lamp.spot_angle = 70.0
+	lamp.position = Vector3(x - 0.6, 3.0, mid)
+	lamp.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	add_child(lamp)
 	for i: int in items.size():
 		var item: ShopItem = items[i]
-		var z: float = -6.6 + i * 1.5
-		var spot: UseSpot = UseSpot.make(Vector3(0.8, 0.8, 0.8), Color(0.42, 0.3, 0.18),
+		var z: float = from + i * SHOP_STEP
+		var spot: UseSpot = UseSpot.make(Vector3(0.9, 0.7, 1.2), Color.WHITE,
 				func() -> String: return _shop_hint(item), func(_p: PlayerController) -> void: buy(item))
 		spot.name = "Shop_" + item.id
-		spot.position = Vector3(ROOM.x * 0.5 - 0.7, 0.46, z)
+		spot.position = Vector3(x, BENCH_HEIGHT + 0.35, z)
+		(spot.get_child(1) as MeshInstance3D).visible = false      # вместо коробки — сам товар
 		add_child(spot)
-		var tag: Label3D = _text(Vector3(ROOM.x * 0.5 - 0.12, 1.75, z), -PI * 0.5, 50)
+		var model: Node3D = _goods_model(item)
+		if model != null:
+			spot.add_child(model)
+			model.position.y = -0.35
+			_goods[item.id] = model
+		# ценник: бумажка у переднего края
+		var card: StaticBody3D = _slab(Vector3(0.02, 0.11, 0.26), Vector3(x - 0.47, BENCH_HEIGHT + 0.055, z), Color(0.9, 0.87, 0.75))
+		card.collision_layer = 0
+		var tag: Label3D = _text(Vector3(x - 0.482, BENCH_HEIGHT + 0.055, z), -PI * 0.5, 40)
+		tag.pixel_size = 0.0016
+		tag.outline_size = 0
+		tag.modulate = Color(0.1, 0.1, 0.12)
 		_price_tags[item.id] = tag
 	_update_tags()
+
+
+## Модель товара на верстак: инструмент — его же модель, улучшение — деталь.
+func _goods_model(item: ShopItem) -> Node3D:
+	var scene: PackedScene = null
+	var lay := Basis.IDENTITY
+	if not item.tool.is_empty():
+		var data: ItemData = ItemDb.tool(item.tool)
+		scene = data.model if data != null else null
+		lay = Basis(Vector3.UP, PI * 0.5)          # длинные инструменты лежат вдоль верстака
+	elif UPGRADE_MODELS.has(item.id):
+		scene = load(UPGRADE_MODELS[item.id])
+		lay = Basis(Vector3.UP, PI * 0.5)
+	if scene == null:
+		return null
+	var model: Node3D = scene.instantiate()
+	for col: Node in model.find_children("col_*", "CollisionShape3D", true, false):
+		col.queue_free()
+	model.basis = lay
+	return model
 
 
 func _update_tags() -> void:
 	for item: ShopItem in ShopDb.all():
 		var tag: Label3D = _price_tags[item.id]
 		var bought: bool = item.tool.is_empty() and run.has_upgrade(item.id)
-		tag.text = "%s\n%s\n%s" % [tr(item.name_key), tr(item.desc_key), tr("SHOP_BOUGHT") if bought else Fmt.rub(item.price)]
-		tag.modulate = Color(0.55, 1.0, 0.5) if bought else (Color.WHITE if run.money >= item.price else Color(1.0, 0.55, 0.5))
+		tag.text = "✓" if bought else Fmt.rub(item.price)
+		tag.modulate = Color(0.1, 0.45, 0.1) if bought else (Color(0.1, 0.1, 0.12) if run.money >= item.price else Color(0.7, 0.1, 0.08))
+		if _goods.has(item.id):
+			_goods[item.id].visible = not bought      # купленная деталь уже на буханке
 
 
+## Подсказка под прицелом: название и цена, что даёт, и клавиша — если купить можно.
 func _shop_hint(item: ShopItem) -> String:
-	if not item.tool.is_empty():
-		if run.money < item.price:
-			return tr("SHOP_HINT_POOR") % [tr(item.name_key), Fmt.rub(item.price - run.money)]
-		if _player.belt.free_slot() < 0:
-			return tr("SHOP_HINT_BELT_FULL") % tr(item.name_key)
-		return tr("SHOP_HINT_BUY") % [tr(item.name_key), Fmt.rub(item.price)]
-	if run.has_upgrade(item.id):
-		return tr("SHOP_HINT_BOUGHT") % tr(item.name_key)
+	var head: String = "%s · %s\n%s" % [tr(item.name_key), Fmt.rub(item.price), tr(item.desc_key)]
+	if item.tool.is_empty() and run.has_upgrade(item.id):
+		return "%s\n%s" % [tr(item.name_key), tr("SHOP_HINT_BOUGHT")]
 	if run.money < item.price:
-		return tr("SHOP_HINT_POOR") % [tr(item.name_key), Fmt.rub(item.price - run.money)]
-	return tr("SHOP_HINT_BUY") % [tr(item.name_key), Fmt.rub(item.price)]
+		return head + "\n" + tr("SHOP_HINT_POOR") % Fmt.rub(item.price - run.money)
+	if not item.tool.is_empty() and _player.belt.free_slot() < 0:
+		return head + "\n" + tr("SHOP_HINT_BELT_FULL")
+	return head + "\n" + tr("SHOP_HINT_BUY")
 
 
 ## Купить товар: деньги из кассы, улучшение сразу ставится на машину.

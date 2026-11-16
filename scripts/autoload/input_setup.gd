@@ -30,6 +30,8 @@ const DEFAULTS: Dictionary = {
 	&"slot_1": [["key", KEY_1], ["pad", JOY_BUTTON_DPAD_LEFT]],
 	&"slot_2": [["key", KEY_2], ["pad", JOY_BUTTON_DPAD_UP]],
 	&"slot_3": [["key", KEY_3], ["pad", JOY_BUTTON_DPAD_RIGHT]],
+	&"slot_4": [["key", KEY_4], ["pad", JOY_BUTTON_DPAD_DOWN]],
+	&"drop_item": [["key", KEY_G]],
 	&"flop": [["key", KEY_Q], ["pad", JOY_BUTTON_BACK]],
 	&"gesture": [["key", KEY_C], ["pad", JOY_BUTTON_RIGHT_STICK]],
 	&"push_to_talk": [["key", KEY_V], ["pad", JOY_BUTTON_RIGHT_SHOULDER]],

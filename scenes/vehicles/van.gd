@@ -34,6 +34,7 @@ var strapped: bool = false
 ## Поставленные улучшения
 var upgrades: Array[StringName] = []
 var engine_on: bool = false
+var _noise_wait: float = 0.0
 var headlights_on: bool = false
 var doors_open: bool = false
 
@@ -373,6 +374,11 @@ func _physics_process(delta: float) -> void:
 	var speed: float = forward_speed()
 	_update_stall(delta, speed)
 	var power: float = power_factor() if engine_on else 0.0
+	if engine_on and absf(throttle) > 0.1:
+		_noise_wait -= delta
+		if _noise_wait <= 0.0:
+			_noise_wait = 1.0
+			Game.make_noise(global_position, Game.guard_config.engine_noise)   # мотор слышно сторожу
 	# руль: на скорости колёса поворачиваются меньше
 	var limit: float = lerpf(feel.steer_max, feel.steer_max_fast, clampf(absf(speed) / feel.max_speed, 0.0, 1.0))
 	steering = move_toward(steering, clampf(steer, -1.0, 1.0) * limit, feel.steer_speed * delta)

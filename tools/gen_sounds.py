@@ -193,6 +193,20 @@ def build() -> None:
     # писк металлоискателя
     t = _t(0.07)
     save("beep_1", finish(np.sin(2 * np.pi * 1900 * t) + 0.3 * np.sin(2 * np.pi * 3800 * t), peak=0.5))
+    # металлоискатель «нашёл»: три быстрых ноты вверх, ни с чем не спутать
+    parts = []
+    for freq in (1500, 2000, 2700):
+        t = _t(0.11)
+        note = (np.sin(2 * np.pi * freq * t) + 0.35 * np.sin(2 * np.pi * freq * 2 * t)) * np.clip(t / 0.005, 0.0, 1.0) * np.clip((0.11 - t) / 0.03, 0.0, 1.0)
+        parts.append(note)
+        parts.append(np.zeros(int(RATE * 0.02)))
+    save("detector_found_1", finish(np.concatenate(parts), peak=0.6))
+    # свисток сторожа: высокая трель с горошиной
+    t = _t(0.9)
+    trill = np.sin(2 * np.pi * 2750 * t + 6.0 * np.sin(2 * np.pi * 38 * t)) * (0.75 + 0.25 * np.sin(2 * np.pi * 38 * t))
+    trill *= np.clip(t / 0.03, 0.0, 1.0) * np.clip((0.9 - t) / 0.12, 0.0, 1.0)
+    rng = np.random.default_rng(910)
+    save("whistle_1", finish(mix(trill, noise(0.9, 0.5, rng, 0.3, 0.9) * 0.12), peak=0.6))
     # гудок «не то»: низкий двойной
     t = _t(0.35)
     buzz = np.sign(np.sin(2 * np.pi * 140 * t)) * 0.5 * (np.sin(2 * np.pi * 3 * t) > -0.3)

@@ -5,13 +5,17 @@ extends Node
 
 signal phase_changed(phase: Phase)
 signal night_time_changed(t: float)
+## Шум в мире: его слышат сторож и прочие. radius — на сколько метров слышно
+signal noise(position: Vector3, radius: float)
 signal debug_flag_changed(flag: StringName, enabled: bool)
 
 enum Phase { GARAGE, ROAD, LANDFILL, WEIGHING, SUMMARY }
 
 const ECONOMY_PATH: String = "res://data/economy.tres"
+const GUARD_PATH: String = "res://data/guard.tres"
 
 var economy: EconomyConfig
+var guard_config: GuardConfig
 ## Текущий забег (создаётся сценой ночи)
 var run: RunState
 var phase: Phase = Phase.GARAGE
@@ -26,7 +30,12 @@ var _debug_flags: Dictionary = {}
 
 func _ready() -> void:
 	economy = load(ECONOMY_PATH)
+	guard_config = load(GUARD_PATH)
 	assert(economy != null, "нет файла экономики " + ECONOMY_PATH)
+
+
+func make_noise(at: Vector3, radius: float) -> void:
+	noise.emit(at, radius)
 
 
 func set_phase(p: Phase) -> void:

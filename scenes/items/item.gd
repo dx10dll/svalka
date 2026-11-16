@@ -34,6 +34,7 @@ var _prev_velocity := Vector3.ZERO
 var _intact_mesh: Node3D
 var _broken_mesh: Node3D
 var _highlighted: bool = false
+static var _outlines: Dictionary[int, Material] = {}
 
 
 func _ready() -> void:
@@ -96,6 +97,8 @@ func ride_action() -> Dictionary:
 func interact(player: PlayerController, action: StringName) -> void:
 	if action == &"ride" and can_ride():
 		player.sit_on(self)
+	elif action == &"stow":
+		player.belt.pickup(self)
 
 
 ## Седок сел: днище скользит, вес седока добавляется.
@@ -167,9 +170,28 @@ func set_highlight(on: bool) -> void:
 	if on == _highlighted:
 		return
 	_highlighted = on
-	var overlay: Material = load(OUTLINE_MATERIAL) if on else null
+	var overlay: Material = _outline(tier_color()) if on else null
 	for mesh: Node in find_children("*", "MeshInstance3D", true, false):
 		(mesh as MeshInstance3D).material_overlay = overlay
+
+
+## Цвет ценности: чем дороже вещь сейчас, тем «богаче» цвет обводки и названия.
+func tier_color() -> Color:
+	if data == null or data.is_trash():
+		return Ui.TRASH_COLOR
+	if data.is_tool():
+		return Ui.TOOL_COLOR
+	return Ui.TIER_COLORS[mini(Game.economy.tier_for(value()), Ui.TIER_COLORS.size() - 1)]
+
+
+## Материал обводки нужного цвета (по одному на цвет на всю игру).
+static func _outline(color: Color) -> Material:
+	var key: int = color.to_rgba32()
+	if not _outlines.has(key):
+		var mat: ShaderMaterial = (load(OUTLINE_MATERIAL) as ShaderMaterial).duplicate()
+		mat.set_shader_parameter(&"color", color)
+		_outlines[key] = mat
+	return _outlines[key]
 
 
 ## Сколько предмет стоит сейчас, ₽ (с учётом целости).
@@ -189,6 +211,9 @@ func _on_body_entered(_other: Node) -> void:
 	if impact < MIN_IMPACT:
 		return
 	hit.emit(impact)
+	var ears: GuardConfig = Game.guard_config
+	if impact >= ears.impact_noise_min_speed:
+		Game.make_noise(global_position, minf(impact * ears.impact_noise_per_speed, ears.impact_noise_max))
 	if rider != null and (impact >= data.ride_crash_speed or global_basis.y.y < 0.3):
 		rider.thrown_from_ride(impact)
 	Audio.play_impact(data.impact_sound if data != null else &"metal_heavy", global_position, impact)

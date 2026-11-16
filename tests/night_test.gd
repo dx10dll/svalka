@@ -194,7 +194,7 @@ func _run() -> void:
 	_check(items.size() == 7 and items[0].price > 0 and tr(items[0].name_key) != items[0].name_key, "в лавке %d товара с названиями" % items.size())
 	# покупка через E у ящика
 	var crate: Node3D = garage.get_node(^"Shop_springs")
-	player.global_position = crate.global_position + Vector3(-1.5, -0.4, 0.0)
+	player.global_position = Vector3(crate.global_position.x - 1.5, 0.05, crate.global_position.z)
 	to = crate.global_position - (player.global_position + Vector3.UP * player.eye_height())
 	player.yaw = atan2(-to.x, -to.z)
 	player.pitch = atan2(to.y, Vector2(to.x, to.z).length())
@@ -215,33 +215,48 @@ func _run() -> void:
 	var base_lift: float = player.grab.lift_force()
 	grun.money = 1000
 	_check(garage.call(&"buy", items[4]) and belt.has_tool(&"crowbar") and grun.money == 100, "купили лом — он на поясе, в кассе 100")
-	_check(is_equal_approx(player.grab.lift_force(), base_lift * player.feel.crowbar_lift_mult), "с ломом поднимаем в %.1f раза больше" % player.feel.crowbar_lift_mult)
 	_check(grun.belt[1] == "crowbar", "пояс записан в забег: %s" % str(grun.belt))
-	# снять лом с пояса клавишей 2 — он падает перед игроком
+	_check(belt.active == -1 and belt.can_grab() and is_equal_approx(player.grab.lift_force(), base_lift), "в начале в руках пусто, лом на поясе силы не даёт")
+	# клавиша 3 — взять лом в руки (слот 2), сила растёт
+	input.slot_pressed = 3
+	await get_tree().physics_frame
+	input.slot_pressed = 0
+	_check(belt.active == 1 and belt.active_tool() == &"crowbar" and belt.can_grab(), "клавиша 3: лом в руках, таскать можно")
+	_check(is_equal_approx(player.grab.lift_force(), base_lift * player.feel.crowbar_lift_mult), "с ломом в руках поднимаем в %.1f раза больше" % player.feel.crowbar_lift_mult)
+	# клавиша 2 — лопата: таскать нельзя
 	input.slot_pressed = 2
 	await get_tree().physics_frame
 	input.slot_pressed = 0
+	_check(belt.active_tool() == &"shovel" and not belt.can_grab(), "клавиша 2: лопата в руках, таскать нельзя")
+	# клавиша 1 — руки
+	input.slot_pressed = 1
+	await get_tree().physics_frame
+	input.slot_pressed = 0
+	_check(belt.active == -1 and belt.can_grab(), "клавиша 1: пустые руки")
+	# G выбрасывает то, что в руках
+	input.slot_pressed = 3
+	await get_tree().physics_frame
+	input.slot_pressed = 0
+	input.drop_pressed = true
+	await get_tree().physics_frame
+	input.drop_pressed = false
 	await _wait(0.8)
 	var dropped: Item = null
 	for n: Node in get_tree().get_nodes_in_group(&"items"):
 		if (n as Item).data.id == &"crowbar" and n.is_inside_tree():
 			dropped = n
-	_check(dropped != null and not belt.has_tool(&"crowbar") and is_equal_approx(player.grab.lift_force(), base_lift),
-			"клавиша 2: лом упал на пол, сила рук прежняя")
-	# поднять и повесить обратно
+	_check(dropped != null and not belt.has_tool(&"crowbar") and belt.active == -1, "G: лом упал на пол, в руках пусто")
+	# E по лежащему инструменту — на пояс
 	to = dropped.global_position - (player.global_position + Vector3.UP * player.eye_height())
 	player.yaw = atan2(-to.x, -to.z)
 	player.pitch = atan2(to.y, Vector2(to.x, to.z).length())
-	await _wait(0.2)
-	input.grab_held = true
-	await _wait(0.6)
-	_check(player.grab.held == dropped, "подняли лом с пола")
-	input.slot_pressed = 3
+	await _wait(0.3)
+	_check(player.grab.focus == dropped and player.grab.focus_action.get("action") == &"stow", "на лом можно нажать E")
+	input.interact_pressed = true
 	await get_tree().physics_frame
-	input.slot_pressed = 0
-	input.grab_held = false
+	input.interact_pressed = false
 	await _wait(0.2)
-	_check(belt.slots[2] == dropped and not dropped.is_inside_tree() and player.grab.held == null, "клавиша 3: лом на поясе в третьем слоте")
+	_check(belt.slots[1] == dropped and not dropped.is_inside_tree(), "E: лом снова на поясе")
 	grun.money = 500
 	_check(not garage.call(&"buy", items[0]) and grun.money == 500, "второй раз то же не купить")
 	await _wait(2.0)
@@ -265,7 +280,16 @@ func _run() -> void:
 	_check(is_inf(ndump.nearest_loot_distance(Vector3(0, 0, 200), 9.0)), "вдали от горы ценного нет")
 	var site_at: Vector3 = ndump.to_global(ndump.field.cell_base(ndump.field.sites[0]["anchor"]))
 	_check(ndump.nearest_loot_distance(site_at + Vector3(2, 0, 0), 9.0) < 2.5, "рядом с закопанной вещью прибор её слышит")
-	_check(Audio.has_sound(&"beep"), "звук писка есть")
+	_check(Audio.has_sound(&"beep") and Audio.has_sound(&"detector_found"), "писк и трель «нашёл» есть")
+	# прибор работает только в руках
+	var nbelt: PlayerBelt = player.belt
+	nbelt.stow(2, ItemDb.spawn(ItemDb.tool(&"metal_detector"), RandomNumberGenerator.new()))
+	player.global_position = site_at + Vector3(0.5, 0.3, 0.0)
+	await _wait(0.6)
+	_check(is_inf(nbelt.loot_distance()) and is_zero_approx(nbelt.signal_strength()), "металлоискатель на поясе молчит")
+	nbelt.select(2)
+	await _wait(0.6)
+	_check(nbelt.loot_distance() < 3.0 and nbelt.signal_strength() > 0.6, "в руках — сигнал %.0f%%" % (nbelt.signal_strength() * 100.0))
 	Save.write({})
 
 	print("Тесты ночи: прошло %d, провалено %d" % [_passed, _failed])

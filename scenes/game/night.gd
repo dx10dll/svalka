@@ -19,6 +19,9 @@ var summary_lines: PackedStringArray = []
 var dawn: bool = false
 ## Въехали на свалку: с этого момента идут часы
 var entered: bool = false
+var guard: Guard
+## Сколько секунд осталось до выхода сторожа на поиски (после проезда мимо него)
+var search_in: float = -1.0
 
 const NOTICE_WIDTH: float = 420.0
 
@@ -90,6 +93,14 @@ func _populate() -> void:
 	_player.knocked_down.connect(func(_impact: float) -> void: run.count(&"falls"))
 	dump.collapsed.connect(func(_center: Vector3, _pieces: int) -> void: run.count(&"collapses"))
 	get_tree().node_added.connect(_on_node_added)
+	guard = Guard.new()
+	guard.name = "Guard"
+	add_child(guard)
+	guard.setup(Vector3.ZERO, dump.config.radius, site.booth_position + Vector3(-1.9, 0.0, -1.6),
+			site.gate_position + Vector3(1.0, 0.05, 5.0))
+	guard.rotation.y = PI * 0.5
+	guard.state_changed.connect(_on_guard_state)
+	guard.caught.connect(_on_guard_caught)
 	_build_hud()
 	if OS.get_cmdline_user_args().has("--demo-summary"):
 		# для снимков интерфейса: сразу показать итог ночи
@@ -128,6 +139,19 @@ func pay_guard() -> bool:
 	return true
 
 
+func _on_guard_state(state: Guard.State) -> void:
+	if state == Guard.State.CHASE:
+		_say(tr("GUARD_SPOTTED"), 3.0)
+
+
+func _on_guard_caught(_who: PlayerController, taken: Item) -> void:
+	run.count(&"caught")
+	if taken != null and taken.data != null:
+		_say(tr("GUARD_CAUGHT_TOOK") % tr(taken.data.name_key), 6.0)
+	else:
+		_say(tr("GUARD_CAUGHT"), 6.0)
+
+
 ## Кто-то пересёк линию ворот: часы пошли. Без оплаты — значит, пролезли.
 func _enter() -> void:
 	entered = true
@@ -135,6 +159,7 @@ func _enter() -> void:
 	if not run.guard_paid:
 		run.sneaked = true
 		run.count(&"sneaked")
+		search_in = guard.config.search_delay
 		_say(tr("GUARD_SNEAKED"), 6.0)
 	else:
 		_say(tr("NIGHT_CLOCK_STARTED"))
@@ -223,6 +248,11 @@ func _physics_process(delta: float) -> void:
 		if _player.global_position.z < line or van.global_position.z < line:
 			_enter()
 		return
+	if search_in > 0.0:
+		search_in -= delta
+		if search_in <= 0.0:
+			guard.start_search()
+			_say(tr("GUARD_SEARCHING"), 6.0)
 	Game.night_time += delta / run.economy.night_seconds
 	if not dawn and Game.night_time >= run.economy.dawn_at:
 		dawn = true
@@ -291,7 +321,7 @@ func finish() -> void:
 	_summary.add_child(money)
 	_summary.add_child(HSeparator.new())
 	for stat: Array in [[&"buried", "STAT_BURIED"], [&"collapses", "STAT_COLLAPSES"], [&"broken", "STAT_BROKEN"],
-			[&"falls", "STAT_FALLS"], [&"sold_items", "STAT_SOLD"], [&"sneaked", "STAT_SNEAKED"]]:
+			[&"falls", "STAT_FALLS"], [&"sold_items", "STAT_SOLD"], [&"sneaked", "STAT_SNEAKED"], [&"caught", "STAT_CAUGHT"]]:
 		var n: int = run.stats.get(stat[0], 0)
 		if n > 0:
 			summary_lines.append(tr(stat[1]) % n)

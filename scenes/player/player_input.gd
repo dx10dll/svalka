@@ -21,3 +21,5 @@ var flashlight_pressed: bool = false
 var interact_pressed: bool = false
 ## Нажат слот пояса: 1, 2 или 3 (0 — нет)
 var slot_pressed: int = 0
+## Выбросить то, что в руках с пояса (один тик)
+var drop_pressed: bool = false

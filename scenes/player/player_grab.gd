@@ -89,7 +89,7 @@ func lift_force() -> float:
 
 
 func _tool_mult() -> float:
-	return _feel.crowbar_lift_mult if _player.belt != null and _player.belt.has_tool(&"crowbar") else 1.0
+	return _feel.crowbar_lift_mult if _player.belt != null and _player.belt.active_tool() == &"crowbar" else 1.0
 
 
 ## Может ли один игрок оторвать предмет от земли.
@@ -122,14 +122,17 @@ func tick(input: PlayerInput, delta: float) -> void:
 		focus_van.push(_van_point, dir)
 	_shovel_wait = maxf(_shovel_wait - delta, 0.0)
 	burn_wait = maxf(burn_wait - delta, 0.0)
+	var hands: bool = _player.belt == null or _player.belt.can_grab()
+	# с лопатой в руках копают обе кнопки мыши; пустыми руками ПКМ гребёт медленно
+	var digging: bool = input.throw_held or (input.grab_held and _player.belt != null and _player.belt.active_tool() == &"shovel")
 	if held == null:
 		throw_charge = 0.0
-		if input.throw_held and _shovel_wait <= 0.0:
+		if digging and _shovel_wait <= 0.0:
 			if focus_dump != null:
 				_shovel(focus_dump.dig(focus_cell))
 			elif focus is Item and (focus as Item).data.is_trash() and not focus.freeze:
 				_shovel(focus as Item)   # лежащий мусор тоже отбрасываем
-		if input.grab_held and not _was_grab_held and burn_wait <= 0.0:
+		if input.grab_held and not _was_grab_held and burn_wait <= 0.0 and hands:
 			if focus != null:
 				if focus.has_meta(&"dump_site"):
 					(focus.get_parent() as Dump).release_site(focus as Item)
@@ -168,7 +171,7 @@ func _update_highlight() -> void:
 func _shovel(piece: Item) -> void:
 	if piece == null:
 		return
-	var has_shovel: bool = _player.belt == null or _player.belt.has_tool(&"shovel")
+	var has_shovel: bool = _player.belt == null or _player.belt.active_tool() == &"shovel"
 	_shovel_wait = _feel.shovel_cooldown if has_shovel else _feel.hands_dig_cooldown   # без лопаты гребём руками
 	_shovel_side = -_shovel_side
 	var flat: Vector3 = Basis(Vector3.UP, _player.yaw) * Vector3.FORWARD
@@ -239,6 +242,9 @@ func _update_focus() -> void:
 			if body is Item and focus_use == null:
 				# в ванну можно сесть: E, а ЛКМ по-прежнему берёт
 				focus_action = (body as Item).ride_action()
+				if focus_action.is_empty() and _player.belt != null and _player.belt.can_stow(body as Item) \
+						and _player.belt.free_slot() >= 0 and not body.freeze:
+					focus_action = {"action": &"stow"}      # E — подобрать на пояс
 				focus_use = body if not focus_action.is_empty() else null
 			focus_dump = null
 			return

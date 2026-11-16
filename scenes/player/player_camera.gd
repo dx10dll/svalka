@@ -22,9 +22,11 @@ var _roll: float = 0.0
 var _fov_add: float = 0.0
 var _eye_height: float = 1.66
 var _has_ragdoll_view: bool = false
-var _rag_basis_offset := Basis.IDENTITY
-var _rag_eye_local := Vector3.ZERO
-var _rag_basis_smooth := Basis.IDENTITY
+var _smooth_y: float = 0.0
+var _height_ready: bool = false
+var _fall_target := Vector3.ZERO
+var _fall_pos := Vector3.ZERO
+var _outside: bool = false
 var _mantle_kick: float = 0.0
 var _shake: float = 0.0
 var _flashlight: SpotLight3D
@@ -108,7 +110,16 @@ func _process(delta: float) -> void:
 
 	# обычный вид: позиция из сглаженного тела, поворот сразу из мыши
 	var base: Vector3 = _player.get_global_transform_interpolated().origin
-	var offset := Vector3(bob_x, _eye_height + bob_y + _dip + _player.step_visual_offset, 0.0)
+	# высота глаз догоняет тело плавно: на куче мусора под ногами сплошные ступеньки,
+	# и без этого камеру трясёт на каждом куске. В воздухе догоняет почти сразу.
+	var follow: float = _feel.camera_height_smoothing if grounded else _feel.camera_height_smoothing * 3.0
+	if not _height_ready or absf(base.y - _smooth_y) > _feel.camera_height_max_lag * 3.0:
+		_smooth_y = base.y
+		_height_ready = true
+	_smooth_y = lerpf(_smooth_y, base.y, 1.0 - exp(-follow * delta))
+	_smooth_y = clampf(_smooth_y, base.y - _feel.camera_height_max_lag, base.y + _feel.camera_height_max_lag)
+	base.y = _smooth_y
+	var offset := Vector3(bob_x, _eye_height + bob_y + _dip, 0.0)
 	var yaw_basis := Basis(Vector3.UP, _player.yaw)
 	var pos: Vector3 = base + yaw_basis * offset
 	var roll: float = _roll + bob_roll - _mantle_kick * 0.04
@@ -121,17 +132,32 @@ func _process(delta: float) -> void:
 		basis_n = seat.basis.orthonormalized() * Basis(Vector3.UP, _player.seat_yaw + _player.seat_look) \
 				* Basis(Vector3.RIGHT, _player.pitch)
 
-	# сбили с ног: камера сидит в голове рэгдолла и кувыркается вместе с ней,
-	# при вставании плавно возвращается к обычному виду
+	# сбили с ног: камера отлетает назад и смотрит со стороны, как мужичок кувыркается;
+	# при вставании плавно возвращается в глаза
 	var down: float = _player.downed_amount()
 	if down > 0.0 and _has_ragdoll_view:
-		var head: Transform3D = _player.body.ragdoll.head_transform()
-		var rag_basis: Basis = (head.basis * _rag_basis_offset).orthonormalized()
-		_rag_basis_smooth = _rag_basis_smooth.slerp(rag_basis, 1.0 - exp(-22.0 * delta)).orthonormalized()
-		pos = pos.lerp(head * _rag_eye_local, down)
-		basis_n = basis_n.slerp(_rag_basis_smooth, down).orthonormalized()
+		var head: Vector3 = _player.body.ragdoll.head_transform().origin
+		_fall_target = _fall_target.lerp(head, 1.0 - exp(-10.0 * delta))
+		var back: Vector3 = Basis(Vector3.UP, _player.yaw) * Vector3.BACK
+		var want: Vector3 = _fall_target + back * _feel.fall_cam_distance + Vector3.UP * _feel.fall_cam_height
+		# не уходим камерой в стену или в кучу
+		var q := PhysicsRayQueryParameters3D.create(_fall_target + Vector3.UP * 0.3, want)
+		q.exclude = [_player.get_rid()]
+		q.collision_mask = 1
+		var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
+		if not hit.is_empty() and not (hit["collider"] is RigidBody3D):
+			want = (hit["position"] as Vector3).lerp(_fall_target + Vector3.UP * 0.3, 0.15)
+		_fall_pos = _fall_pos.lerp(want, 1.0 - exp(-8.0 * delta))
+		var k: float = smoothstep(0.0, 1.0, down)
+		var look: Vector3 = _fall_target - _fall_pos
+		if look.length() > 0.2:
+			var side_basis: Basis = Basis.looking_at(look.normalized(), Vector3.UP)
+			basis_n = basis_n.slerp(side_basis, k).orthonormalized()
+		pos = pos.lerp(_fall_pos, k)
+		_set_outside_view(k > 0.3)
 	else:
 		_has_ragdoll_view = false
+		_set_outside_view(false)
 	# дрожь (завал рядом): быстро гаснет, сила — квадрат «встряски»
 	_shake = maxf(_shake - delta * 1.4, 0.0)
 	if _shake > 0.0:
@@ -161,6 +187,8 @@ func shake_from(point: Vector3, strength: float) -> void:
 
 
 func _on_landed(impact: float) -> void:
+	if impact < _feel.landing_dip_min_speed:
+		return      # мелкие ступеньки и кочки камеру не качают
 	_dip_velocity -= impact * _feel.landing_dip_per_speed * _feel.landing_spring * 0.09
 	if impact >= _feel.hard_landing_speed:
 		_dip_velocity -= 1.2
@@ -171,9 +199,15 @@ func _on_knocked_down(_impact: float) -> void:
 	_dip = 0.0
 	if _player.body == null:
 		return
-	# запоминаем, как камера сидит относительно головы в момент падения
-	var head: Transform3D = _player.body.ragdoll.bodies[&"head"].global_transform
-	_rag_basis_offset = head.basis.inverse() * global_basis
-	_rag_eye_local = head.affine_inverse() * global_position
-	_rag_basis_smooth = global_basis
+	# камера стартует из глаз и отъезжает
+	_fall_target = _player.body.ragdoll.bodies[&"head"].global_position
+	_fall_pos = global_position
 	_has_ragdoll_view = true
+
+
+## Вид со стороны: показываем голову (в виде из глаз она спрятана).
+func _set_outside_view(on: bool) -> void:
+	if on == _outside:
+		return
+	_outside = on
+	_player.body.set_first_person(not on)

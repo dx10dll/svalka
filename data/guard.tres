@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GuardConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/guard_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+walk_speed = 2.0
+run_speed = 5.4
+view_range = 13.0
+view_range_lit = 34.0
+crouch_mult = 0.5
+view_half_angle = 55.0
+notice_time = 1.4
+lose_time = 5.0
+impact_noise_per_speed = 3.5
+collapse_noise = 50.0
+engine_noise = 26.0
+catch_distance = 1.5
+catch_cooldown = 25.0
+search_delay = 40.0
+look_around_time = 5.0

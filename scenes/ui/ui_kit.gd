@@ -10,6 +10,12 @@ const DANGER := Color(1.0, 0.42, 0.32)
 const GOOD := Color(0.6, 0.95, 0.5)
 const BACK := Color(0.05, 0.05, 0.06, 0.72)
 
+## Цвета ценности вещи: мусор, потом пять ступеней от дешёвого к сокровищу
+const TRASH_COLOR := Color(0.55, 0.55, 0.55)
+const TIER_COLORS: Array[Color] = [Color(0.92, 0.92, 0.9), Color(0.45, 0.9, 0.4), Color(0.35, 0.65, 1.0),
+		Color(0.75, 0.45, 1.0), Color(1.0, 0.78, 0.25)]
+const TOOL_COLOR := Color(1.0, 0.6, 0.3)
+
 const SIZE_SMALL: int = 12
 const SIZE_TEXT: int = 14
 const SIZE_TITLE: int = 16

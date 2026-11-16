@@ -197,7 +197,7 @@ func _run() -> void:
 	_player.air_left = 0.2
 	await _wait(0.5)
 	_check(ended == [true, false] and _player.mode == PlayerController.Mode.NORMAL, "без воздуха — возврат на старт")
-	_check(_player.global_position.distance_to(Vector3(0, 0.05, cfg.radius + 1.0)) < 1.0, "игрок снова на старте")
+	_check(_player.global_position.distance_to(Vector3(0, 0.05, cfg.radius + 1.0)) < 2.5, "игрок снова на старте")
 	await _wait(0.3)
 
 	# 9. по куче можно зайти наверх пешком

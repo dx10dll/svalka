@@ -85,9 +85,9 @@ GARAGE_GATE,НА СВАЛКУ,TO THE DUMP
 GARAGE_HINT_LEAVE,E — ехать на свалку (ночь %d · норма %s),E to drive to the dump (night %d · quota %s)
 SHOP_TITLE,ЛАВКА БАРЫГИ,THE FENCE'S SHOP
 SHOP_BOUGHT,КУПЛЕНО,BOUGHT
-SHOP_HINT_BUY,E — купить: %s за %s,E to buy: %s for %s
-SHOP_HINT_POOR,%s: не хватает %s,%s: %s short
-SHOP_HINT_BOUGHT,%s: уже стоит на буханке,%s: already fitted
+SHOP_HINT_BUY,E — купить,E — buy
+SHOP_HINT_POOR,не хватает %s,%s short
+SHOP_HINT_BOUGHT,уже стоит на буханке,already fitted
 SHOP_SPRINGS,Усиленные рессоры,Heavy springs
 SHOP_SPRINGS_DESC,+300 кг груза,+300 kg cargo
 SHOP_TYRES,Резина-вездеход,Mud tyres
@@ -116,11 +116,11 @@ TOOL_HEADLAMP,Налобный фонарь,Headlamp
 HUD_BELT_EMPTY,пусто,empty
 HUD_TOOL_HINT,ЛКМ — взять · 1 2 3 — на пояс,LMB to grab · 1 2 3 to belt
 HUD_BELT_HINT,1 2 3 — повесить на пояс,1 2 3 to hang on the belt
-SHOP_SHOVEL_DESC,копать быстро (ПКМ),dig fast (RMB)
-SHOP_CROWBAR_DESC,поднимаешь в полтора раза больше,lift half as much again
-SHOP_DETECTOR_DESC,пищит рядом с ценным в куче,beeps near loot in the heap
+SHOP_SHOVEL_DESC,в руках копает быстро,digs fast when in hand
+SHOP_CROWBAR_DESC,в руках — тянешь в полтора раза сильнее,in hand: pull half as hard again
+SHOP_DETECTOR_DESC,в руках пищит рядом с ценным в куче,in hand: beeps near loot in the heap
 SHOP_HEADLAMP_DESC,фонарь ярче и шире,a brighter, wider light
-SHOP_HINT_BELT_FULL,%s: пояс занят — освободи слот,%s: belt is full — free a slot
+SHOP_HINT_BELT_FULL,пояс занят,belt is full
 GUARD_PAY,E — заплатить сторожу %s,E — pay the guard %s
 GUARD_NO_MONEY,Сторож хочет %s. Столько нет — ищи дыру в заборе.,The guard wants %s. Not enough — find the hole in the fence.
 GUARD_THANKS,Сторож: «Проезжай. Я ничего не видел». Часы пойдут за воротами.,Guard: "Go on. I saw nothing." The clock starts past the gate.
@@ -156,3 +156,10 @@ YARD_SEE_FRIDGE,Холодильник. Пустой? Проверю.,A fridge. 
 YARD_SEE_CAN,По одной банке носить будете?,Bringing them one can at a time?
 YARD_SEE_RADIO,Приёмник. Старый. Хорошо.,A radio. Old. Good.
 YARD_SEE_CAMERA,Фотоаппарат. Аккуратнее с ним.,A camera. Careful with it.
+GUARD_SEARCHING,Сторож заметил следы и вышел искать. Гаси фонарь и не шуми.,The guard found tracks and is out searching. Lights off and keep quiet.
+GUARD_SPOTTED,Сторож увидел! Беги или прячься.,The guard saw you! Run or hide.
+GUARD_CAUGHT,Сторож поймал и вывел за ворота.,The guard caught you and walked you out the gate.
+GUARD_CAUGHT_TOOK,Сторож поймал и вывел за ворота. Отобрал: %s.,The guard caught you and walked you out. He took: %s.
+STAT_CAUGHT,Попались сторожу: %d,Caught by the guard: %d
+HUD_HANDS,Руки,Hands
+HUD_DETECTOR,Сигнал,Signal

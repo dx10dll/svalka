@@ -608,6 +608,7 @@ func _collapse(p: Dictionary) -> void:
 	_crumbs(center, 20 + pieces * 6 + crumbled * 10, 1.4)
 	get_tree().call_group(&"player_cameras", &"shake_from", to_global(center), 0.5 + minf(pieces * 0.05, 0.5))
 	collapsed.emit(to_global(center), pieces)
+	Game.make_noise(to_global(center), Game.guard_config.collapse_noise)
 	# то, что осталось висеть над опустевшим, проверяем ещё раз
 	_check_support(emptied)
 

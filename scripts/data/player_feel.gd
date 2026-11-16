@@ -149,3 +149,15 @@ extends Resource
 @export var acid_burn_time: float = 1.5
 ## Сколько весит сам мужичок (добавляется к ванне, когда в ней едут), кг
 @export var body_mass: float = 45.0
+## Камера при падении: на сколько метров отлетает назад и вверх от головы
+@export var fall_cam_distance: float = 3.4
+@export var fall_cam_height: float = 1.2
+## Ближе этого металлоискатель заливается трелью «нашёл», м
+@export var detector_found_range: float = 1.8
+@export var detector_found_repeat: float = 0.55
+## Как быстро высота камеры догоняет тело на земле (больше — резче), 1/с
+@export var camera_height_smoothing: float = 12.0
+## На сколько метров камера может отстать от тела по высоте
+@export var camera_height_max_lag: float = 0.55
+## Приземления мягче этого камеру не качают, м/с
+@export var landing_dip_min_speed: float = 3.2

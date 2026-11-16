@@ -17,6 +17,8 @@ extends Resource
 ## Сколько берёт сторож за въезд в первую ночь и на сколько дорожает каждую следующую, ₽
 @export var guard_fee: int = 100
 @export var guard_fee_per_night: int = 50
+## Пороги цены вещи для цвета обводки, ₽: дешевле первого — серая, дальше зелёная, синяя, фиолетовая, золотая
+@export var tier_prices: PackedInt32Array = [250, 700, 1400, 2400]
 @export_group("Цены за кг, ₽")
 @export var price_copper: int = 120
 @export var price_brass: int = 70
@@ -27,6 +29,15 @@ extends Resource
 
 func nights() -> int:
 	return quotas_for_four.size()
+
+
+## Ступень ценности вещи по цене: 0 (дешёвка) … 4 (сокровище).
+func tier_for(value: int) -> int:
+	var tier: int = 0
+	for price: int in tier_prices:
+		if value >= price:
+			tier += 1
+	return tier
 
 
 func guard_fee_for(night: int) -> int:
