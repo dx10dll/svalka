@@ -88,11 +88,28 @@ def headlamp() -> None:
     pipeline.finish("tools/headlamp", tri_budget=400)
 
 
+def bottle() -> None:
+    """Бутылка для сторожа: зелёное стекло, белая этикетка без надписей, пробка-бескозырка."""
+    pipeline.reset_scene()
+    b = geo.Builder("mesh")
+    b.cylinder(0.04, 0.2, (0.0, 0, 0.04), "paint_green_dark", axis="X", segments=8)
+    b.cylinder(0.04, 0.07, (-0.13, 0, 0.04), "paint_green_dark", axis="X", segments=8, radius_top=0.016)
+    b.cylinder(0.016, 0.08, (-0.2, 0, 0.04), "paint_green_dark", axis="X", segments=6)
+    b.cylinder(0.019, 0.02, (-0.245, 0, 0.04), "aluminium", axis="X", segments=6)
+    b.cylinder(0.0415, 0.1, (0.02, 0, 0.04), "paper", axis="X", segments=8)
+    obj = b.build()
+    geo.grime(obj, seed=24, dirt_height=0.01, strength=0.2, rust_tint=0.0, noise_scale=10.0)
+    geo.collider_box("body", (0.36, 0.08, 0.08), (-0.07, 0, 0.04))
+    geo.grip("right", (0.0, 0, 0.04), (0, 0, 0))
+    pipeline.finish("tools/bottle", tri_budget=250)
+
+
 def build() -> None:
     shovel()
     crowbar()
     metal_detector()
     headlamp()
+    bottle()
 
 
 if __name__ == "__main__":

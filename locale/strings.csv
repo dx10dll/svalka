@@ -163,3 +163,8 @@ GUARD_CAUGHT_TOOK,Сторож поймал и вывел за ворота. О�
 STAT_CAUGHT,Попались сторожу: %d,Caught by the guard: %d
 HUD_HANDS,Руки,Hands
 HUD_DETECTOR,Сигнал,Signal
+TOOL_BOTTLE,Бутылка,Bottle
+SHOP_BOTTLE_DESC,сторожу в руки — и он тебя не видел,hand it to the guard and he never saw you
+GUARD_GIVE_BOTTLE,E — дать бутылку,E — hand over the bottle
+GUARD_BOTTLE_THANKS,Сторож: «О! Уважаю. Проезжай, я спать».,"Guard: ""Oh! Respect. Drive on, I'm off to sleep."""
+GUARD_BRIBED,Сторож взял бутылку и ушёл в будку.,The guard took the bottle and went back to his booth.

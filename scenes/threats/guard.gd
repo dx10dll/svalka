@@ -8,6 +8,8 @@ extends CharacterBody3D
 signal state_changed(state: State)
 signal spotted(player: PlayerController)
 signal caught(player: PlayerController, taken: Item)
+## Догнал, а ему сунули бутылку
+signal bribed(player: PlayerController)
 
 enum State { BOOTH, PATROL, INVESTIGATE, CHASE, RETURN }
 
@@ -268,6 +270,16 @@ func _look_for_players(delta: float) -> void:
 
 ## Поймал: отбирает то, что в руках, выводит за ворота и уходит на обход.
 func catch_player(player: PlayerController) -> void:
+	if player.belt.active_tool() == &"bottle":
+		var bottle: Item = player.belt.take_active()
+		if bottle != null:
+			bottle.free()
+		target = null
+		suspicion = 0.0
+		Audio.play_at(&"cash", global_position, -4.0, 0.7)
+		go_home()
+		bribed.emit(player)
+		return
 	var taken: Item = player.grab.held as Item
 	player.grab.release(false)
 	if taken != null:

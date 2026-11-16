@@ -131,6 +131,21 @@ func _run() -> void:
 	_check(guard.state != Guard.State.CHASE and state.stats.get(&"caught", 0) == 1, "сразу второй раз не ловит")
 	_check(Audio.has_sound(&"whistle"), "свисток сторожа есть")
 
+	# бутылка в руках: догнал — берёт её и уходит
+	guard.set(&"_cooldown", 0.0)
+	guard.start_search()
+	guard.set(&"state", Guard.State.PATROL)
+	player.belt.stow(2, ItemDb.spawn(ItemDb.tool(&"bottle"), RandomNumberGenerator.new()))
+	player.belt.select(2)
+	_check(player.belt.active_tool() == &"bottle", "бутылка в руках")
+	var before_exit: Vector3 = guard.global_position + guard.global_basis * Vector3(0.0, 0.05, -1.0)
+	player.global_position = before_exit
+	guard.catch_player(player)
+	_check(guard.state == Guard.State.RETURN and not player.belt.has_tool(&"bottle") and state.guard_paid
+			and state.stats.get(&"caught", 0) == 1 and player.global_position.distance_to(before_exit) < 0.5,
+			"сторож взял бутылку, не тронул игрока и пошёл в будку")
+	_check(site.barrier_open, "шлагбаум после бутылки открыт")
+
 	# 6. заплатили — сидит в будке
 	guard.go_home()
 	_check(guard.state == Guard.State.RETURN, "идёт домой")

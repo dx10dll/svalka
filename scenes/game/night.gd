@@ -101,6 +101,7 @@ func _populate() -> void:
 	guard.rotation.y = PI * 0.5
 	guard.state_changed.connect(_on_guard_state)
 	guard.caught.connect(_on_guard_caught)
+	guard.bribed.connect(_on_guard_bribed)
 	_build_hud()
 	if OS.get_cmdline_user_args().has("--demo-summary"):
 		# для снимков интерфейса: сразу показать итог ночи
@@ -118,13 +119,35 @@ func guard_fee() -> int:
 func _guard_hint() -> String:
 	if run.guard_paid or finished:
 		return ""
+	if _player.belt.active_tool() == &"bottle":
+		return tr("GUARD_GIVE_BOTTLE")
 	if run.money < guard_fee():
 		return tr("GUARD_NO_MONEY") % Fmt.rub(guard_fee())
 	return tr("GUARD_PAY") % Fmt.rub(guard_fee())
 
 
-func _pay_guard(_player_who: PlayerController) -> void:
-	pay_guard()
+func _pay_guard(who: PlayerController) -> void:
+	if who.belt.active_tool() == &"bottle" and not run.guard_paid:
+		if give_bottle(who):
+			_say(tr("GUARD_BOTTLE_THANKS"), 6.0)
+	else:
+		pay_guard()
+
+
+## Отдать сторожу бутылку из рук: пускает без денег и ложится спать (или бросает поиски).
+func give_bottle(who: PlayerController) -> bool:
+	if who.belt.active_tool() != &"bottle":
+		return false
+	var bottle: Item = who.belt.take_active()
+	if bottle != null:
+		bottle.free()
+	run.guard_paid = true
+	run.count(&"bottles")
+	search_in = -1.0
+	site.set_barrier(true)
+	guard.go_home()
+	Audio.play_at(&"cash", who.global_position, -4.0, 0.7)
+	return true
 
 
 ## Заплатить сторожу за въезд: шлагбаум поднимается.
@@ -142,6 +165,15 @@ func pay_guard() -> bool:
 func _on_guard_state(state: Guard.State) -> void:
 	if state == Guard.State.CHASE:
 		_say(tr("GUARD_SPOTTED"), 3.0)
+
+
+## Сторож догнал, а в руках бутылка: берёт её вместо вещей и уходит.
+func _on_guard_bribed(_who: PlayerController) -> void:
+	run.guard_paid = true
+	run.count(&"bottles")
+	search_in = -1.0
+	site.set_barrier(true)
+	_say(tr("GUARD_BRIBED"), 6.0)
 
 
 func _on_guard_caught(_who: PlayerController, taken: Item) -> void:

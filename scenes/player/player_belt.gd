@@ -78,6 +78,17 @@ func pickup(item: Item) -> bool:
 	return true
 
 
+## Забрать из рук то, что выбрано на поясе (отдали, съели). Предмет остаётся вне сцены.
+func take_active() -> Item:
+	if active < 0:
+		return null
+	var item: Item = slots[active]
+	slots[active] = null
+	active = -1
+	changed.emit()
+	return item
+
+
 ## G: выбросить то, что в руках с пояса.
 func drop_active() -> Item:
 	return drop(active) if active >= 0 else null
