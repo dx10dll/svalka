@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ShopItem" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/shop_item.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"tool_crowbar"
+name_key = "TOOL_CROWBAR"
+desc_key = "SHOP_CROWBAR_DESC"
+price = 900
+tool = &"crowbar"

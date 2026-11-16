@@ -20,6 +20,8 @@ var outcome: Outcome = Outcome.RUNNING
 var stats: Dictionary[StringName, int] = {}
 ## Купленные улучшения буханки (id товаров лавки)
 var upgrades: Array[StringName] = []
+## Что висит на поясе (id инструментов по слотам, пусто — "")
+var belt: Array[String] = ["shovel", "", ""]
 
 
 func _init(cfg: EconomyConfig, player_count: int = 1, seed_value: int = 1) -> void:
@@ -87,17 +89,29 @@ func buy(item: ShopItem) -> bool:
 	return true
 
 
+## Заплатить за инструмент (его можно покупать сколько угодно раз).
+func pay(price: int) -> bool:
+	if money < price:
+		return false
+	money -= price
+	return true
+
+
 func to_dict() -> Dictionary:
 	var ids: Array[String] = []
 	for id: StringName in upgrades:
 		ids.append(String(id))
-	return {"seed": run_seed, "night": night, "money": money, "players": players, "upgrades": ids}
+	return {"seed": run_seed, "night": night, "money": money, "players": players, "upgrades": ids, "belt": belt}
 
 
 static func from_dict(cfg: EconomyConfig, d: Dictionary) -> RunState:
 	var run := RunState.new(cfg, int(d.get("players", 1)), int(d.get("seed", 1)))
 	run.night = clampi(int(d.get("night", 1)), 1, cfg.nights())
 	run.money = int(d.get("money", 0))
+	var saved_belt: Array = d.get("belt", [])
+	if saved_belt.size() == run.belt.size():
+		for i: int in saved_belt.size():
+			run.belt[i] = str(saved_belt[i])
 	for id: Variant in d.get("upgrades", []):
 		run.upgrades.append(StringName(str(id)))
 	return run

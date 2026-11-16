@@ -190,6 +190,9 @@ def build() -> None:
     save("cash_1", finish(mix(modes(0.7, [(2100, 1.0, 0.25), (3150, 0.7, 0.2), (4400, 0.5, 0.15), (5900, 0.3, 0.1)], rng),
                              np.concatenate([np.zeros(int(RATE * 0.09)), modes(0.5, [(2500, 0.9, 0.2), (3700, 0.6, 0.15)], rng)]),
                              noise(0.05, 0.01, rng, 0.2, 0.8) * 0.6)))
+    # писк металлоискателя
+    t = _t(0.07)
+    save("beep_1", finish(np.sin(2 * np.pi * 1900 * t) + 0.3 * np.sin(2 * np.pi * 3800 * t), peak=0.5))
     # гудок «не то»: низкий двойной
     t = _t(0.35)
     buzz = np.sign(np.sin(2 * np.pi * 140 * t)) * 0.5 * (np.sin(2 * np.pi * 3 * t) > -0.3)

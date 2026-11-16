@@ -63,6 +63,7 @@ var scripted_input: PlayerInput = null
 var body: PlayerBody
 ## Захват и переноска предметов
 var grab: PlayerGrab
+var belt: PlayerBelt
 
 var _input := PlayerInput.new()
 var _reader: PlayerInputReader
@@ -111,6 +112,15 @@ func _ready() -> void:
 	grab.name = "Grab"
 	add_child(grab)
 	grab.setup(self)
+	belt = PlayerBelt.new()
+	belt.name = "Belt"
+	add_child(belt)
+	belt.setup(self)
+	# пояс берётся из забега; на отладочных площадках — лопата
+	var kit: Array[String] = ["shovel", "", ""]
+	if Game.run != null and Game.run.outcome == RunState.Outcome.RUNNING:
+		kit = Game.run.belt
+	belt.fill(kit)
 	var cam := PlayerCamera.new()
 	cam.name = "Camera"
 	add_child(cam)
@@ -142,6 +152,8 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_input = scripted_input if scripted_input != null else _reader.sample()
+	if _input.slot_pressed > 0 and mode == Mode.NORMAL:
+		belt.use_slot(_input.slot_pressed - 1)
 	grab.tick(_input, delta)
 	if _input.flashlight_pressed:
 		if mode == Mode.SEATED and vehicle.driver == self:

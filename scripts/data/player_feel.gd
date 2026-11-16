@@ -114,6 +114,21 @@ extends Resource
 @export var landing_spring: float = 120.0
 @export var landing_damping: float = 16.0
 @export_group("Фонарь")
+@export_group("Пояс и инструменты")
+## Тяжелее этого на пояс не повесить, кг
+@export var belt_max_mass: float = 12.0
+## Пауза между гребками руками, без лопаты, с
+@export var hands_dig_cooldown: float = 1.0
+## Лом на поясе: во сколько раз больше поднимаем и тянем
+@export var crowbar_lift_mult: float = 1.5
+## Налобный фонарь: множители яркости и угла
+@export var headlamp_energy_mult: float = 1.8
+@export var headlamp_angle_mult: float = 1.5
+## Металлоискатель: с какого расстояния слышит ценное, м, и паузы между писками (далеко, вплотную)
+@export var detector_range: float = 9.0
+@export var detector_beep_far: float = 1.3
+@export var detector_beep_near: float = 0.14
+@export_group("Машина")
 ## Высота глаз над сиденьем машины, м
 @export var seat_eye_height: float = 0.8
 @export var flashlight_energy: float = 5.0

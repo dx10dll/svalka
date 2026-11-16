@@ -19,3 +19,5 @@ var throw_held: bool = false
 var flashlight_pressed: bool = false
 ## Действие с тем, на что смотрим: сесть за руль, открыть двери (клавиша E)
 var interact_pressed: bool = false
+## Нажат слот пояса: 1, 2 или 3 (0 — нет)
+var slot_pressed: int = 0

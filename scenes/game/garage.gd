@@ -113,7 +113,7 @@ func _build_shop() -> void:
 	var items: Array[ShopItem] = ShopDb.all()
 	for i: int in items.size():
 		var item: ShopItem = items[i]
-		var z: float = -4.6 + i * 2.1
+		var z: float = -6.6 + i * 1.5
 		var spot: UseSpot = UseSpot.make(Vector3(0.8, 0.8, 0.8), Color(0.42, 0.3, 0.18),
 				func() -> String: return _shop_hint(item), func(_p: PlayerController) -> void: buy(item))
 		spot.name = "Shop_" + item.id
@@ -127,12 +127,18 @@ func _build_shop() -> void:
 func _update_tags() -> void:
 	for item: ShopItem in ShopDb.all():
 		var tag: Label3D = _price_tags[item.id]
-		var bought: bool = run.has_upgrade(item.id)
+		var bought: bool = item.tool.is_empty() and run.has_upgrade(item.id)
 		tag.text = "%s\n%s\n%s" % [tr(item.name_key), tr(item.desc_key), tr("SHOP_BOUGHT") if bought else Fmt.rub(item.price)]
 		tag.modulate = Color(0.55, 1.0, 0.5) if bought else (Color.WHITE if run.money >= item.price else Color(1.0, 0.55, 0.5))
 
 
 func _shop_hint(item: ShopItem) -> String:
+	if not item.tool.is_empty():
+		if run.money < item.price:
+			return tr("SHOP_HINT_POOR") % [tr(item.name_key), Fmt.rub(item.price - run.money)]
+		if _player.belt.free_slot() < 0:
+			return tr("SHOP_HINT_BELT_FULL") % tr(item.name_key)
+		return tr("SHOP_HINT_BUY") % [tr(item.name_key), Fmt.rub(item.price)]
 	if run.has_upgrade(item.id):
 		return tr("SHOP_HINT_BOUGHT") % tr(item.name_key)
 	if run.money < item.price:
@@ -142,11 +148,22 @@ func _shop_hint(item: ShopItem) -> String:
 
 ## Купить товар: деньги из кассы, улучшение сразу ставится на машину.
 func buy(item: ShopItem) -> bool:
-	if not run.buy(item):
+	var ok: bool
+	if item.tool.is_empty():
+		ok = run.buy(item)
+		if ok:
+			van.apply_upgrades(run.upgrades)
+	else:
+		# инструмент сразу вешается на пояс
+		var slot: int = _player.belt.free_slot()
+		ok = slot >= 0 and run.pay(item.price)
+		if ok:
+			_player.belt.stow(slot, ItemDb.spawn(ItemDb.tool(item.tool), RandomNumberGenerator.new()))
+			run.belt = _player.belt.ids()
+	if not ok:
 		Audio.play_at(&"deny", _player.global_position, -6.0)
 		return false
 	Audio.play_at(&"cash", _player.global_position, -2.0)
-	van.apply_upgrades(run.upgrades)
 	Game.save_run()
 	_update_board()
 	_update_tags()
@@ -171,6 +188,7 @@ func leave() -> void:
 	if leaving:
 		return
 	leaving = true
+	run.belt = _player.belt.ids()
 	Game.save_run()
 	if auto_advance:
 		get_tree().change_scene_to_file.call_deferred(NIGHT_SCENE)

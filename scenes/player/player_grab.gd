@@ -81,9 +81,18 @@ func held_mass() -> float:
 	return held.mass if held != null else 0.0
 
 
+## Сила рук вверх с учётом лома на поясе, Н.
+func lift_force() -> float:
+	return _feel.lift_force * _tool_mult()
+
+
+func _tool_mult() -> float:
+	return _feel.crowbar_lift_mult if _player.belt != null and _player.belt.has_tool(&"crowbar") else 1.0
+
+
 ## Может ли один игрок оторвать предмет от земли.
 func can_lift(mass: float) -> bool:
-	return mass * 9.8 <= _feel.lift_force
+	return mass * 9.8 <= lift_force()
 
 
 func tick(input: PlayerInput, delta: float) -> void:
@@ -156,7 +165,8 @@ func _update_highlight() -> void:
 func _shovel(piece: Item) -> void:
 	if piece == null:
 		return
-	_shovel_wait = _feel.shovel_cooldown
+	var has_shovel: bool = _player.belt == null or _player.belt.has_tool(&"shovel")
+	_shovel_wait = _feel.shovel_cooldown if has_shovel else _feel.hands_dig_cooldown   # без лопаты гребём руками
 	_shovel_side = -_shovel_side
 	var flat: Vector3 = Basis(Vector3.UP, _player.yaw) * Vector3.FORWARD
 	var right: Vector3 = Basis(Vector3.UP, _player.yaw) * Vector3.RIGHT
@@ -286,8 +296,8 @@ func _hold(delta: float) -> void:
 	var force: Vector3 = offset * (mass * w * w) - v_point * (2.0 * mass * w)
 	force.y += mass * 9.8  # держим вес
 	# силы рук не бесконечны: отдельно подъём и отдельно тяга
-	force.y = clampf(force.y, -_feel.lift_force, _feel.lift_force)
-	var horizontal := Vector3(force.x, 0.0, force.z).limit_length(_feel.pull_force)
+	force.y = clampf(force.y, -lift_force(), lift_force())
+	var horizontal := Vector3(force.x, 0.0, force.z).limit_length(_feel.pull_force * _tool_mult())
 	force.x = horizontal.x
 	force.z = horizontal.z
 	held.apply_force(force, arm)
@@ -339,7 +349,7 @@ func speed_scale() -> float:
 		return 1.0
 	if not can_lift(held.mass):
 		return _feel.drag_speed_factor
-	var load: float = clampf(held.mass * 9.8 / _feel.lift_force, 0.0, 1.0)
+	var load: float = clampf(held.mass * 9.8 / lift_force(), 0.0, 1.0)
 	return lerpf(1.0, _feel.carry_speed_factor, load * load)
 
 

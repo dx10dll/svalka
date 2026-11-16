@@ -7,6 +7,9 @@ extends Node3D
 ## Узел отвязан от физической интерполяции: позиция берётся из сглаженного
 ## положения тела, а поворот — сразу из мыши, без задержки.
 
+## Слой отрисовки тела местного игрока (второй)
+const OWN_BODY_LAYER: int = 2
+
 var camera: Camera3D
 
 var _player: PlayerController
@@ -53,10 +56,17 @@ func setup(player: PlayerController) -> void:
 	_flashlight.light_volumetric_fog_energy = 1.5
 	_flashlight.position = Vector3(0.14, -0.16, -0.05)
 	_flashlight.visible = player.flashlight_on
+	# своё тело от своего фонаря тень не бросает: лампа у самых глаз, и тень рук
+	# и туловища прыгала рябью по всему лучу. От остальных ламп тень остаётся.
+	for mesh: Node in player.body.find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).layers = OWN_BODY_LAYER
+	_flashlight.shadow_caster_mask = 0xFFFFF & ~OWN_BODY_LAYER
 	camera.add_child(_flashlight)
 	player.flashlight_toggled.connect(func(on: bool) -> void:
 		_flashlight.visible = on
 		Audio.play_at(&"grab", global_position, -10.0, 1.6))
+	player.belt.changed.connect(_apply_headlamp)
+	_apply_headlamp()
 	_eye_height = player.eye_height()
 	player.landed.connect(_on_landed)
 	player.jumped.connect(func() -> void: _dip_velocity += 0.9)
@@ -135,6 +145,13 @@ func _process(delta: float) -> void:
 	var fov_target: float = _feel.sprint_fov_add if _player.sprinting else 0.0
 	_fov_add = lerpf(_fov_add, fov_target, 1.0 - exp(-6.0 * delta))
 	camera.fov = _feel.fov + _fov_add
+
+
+## Налобный фонарь на поясе делает луч ярче и шире.
+func _apply_headlamp() -> void:
+	var on: bool = _player.belt.has_tool(&"headlamp")
+	_flashlight.light_energy = _feel.flashlight_energy * (_feel.headlamp_energy_mult if on else 1.0)
+	_flashlight.spot_angle = _feel.flashlight_angle_deg * (_feel.headlamp_angle_mult if on else 1.0)
 
 
 ## Встряхнуть камеру от события в точке мира (чем дальше, тем слабее; дальше 16 м не чувствуется).

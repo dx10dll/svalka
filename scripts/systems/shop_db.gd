@@ -6,6 +6,10 @@ const PATHS: Array[String] = [
 	"res://data/shop/springs.tres",
 	"res://data/shop/tyres.tres",
 	"res://data/shop/searchlight.tres",
+	"res://data/shop/tool_shovel.tres",
+	"res://data/shop/tool_crowbar.tres",
+	"res://data/shop/tool_detector.tres",
+	"res://data/shop/tool_headlamp.tres",
 ]
 
 

@@ -29,6 +29,7 @@ var _dirty: Dictionary[Vector3i, bool] = {}
 var _meshes: Array[Mesh] = []
 var _mesh_offsets: Array[Transform3D] = []
 var _box: BoxShape3D
+var _core_mesh: BoxMesh
 var _site_nodes: Dictionary[int, Item] = {}
 var _pending: Array[Dictionary] = []
 var _rest_time: Dictionary[int, float] = {}
@@ -47,6 +48,8 @@ var _debug_timer: float = 0.0
 class DumpChunk:
 	var body: StaticBody3D
 	var instances: Array[MultiMeshInstance3D] = []
+	## Тёмная «набивка» за наружным слоем: чтобы в щели не было видно пустоту
+	var core: MultiMeshInstance3D
 	## Номер коробки в теле -> индекс ячейки
 	var shape_cells: PackedInt32Array = []
 
@@ -64,6 +67,13 @@ func _ready() -> void:
 		model.free()
 	_box = BoxShape3D.new()
 	_box.size = config.cell_size
+	var core_box := BoxMesh.new()
+	core_box.size = config.cell_size
+	var core_mat := StandardMaterial3D.new()
+	core_mat.albedo_color = Color(0.075, 0.065, 0.055)
+	core_mat.roughness = 1.0
+	core_box.material = core_mat
+	_core_mesh = core_box
 	_columns = Vector2i(int(ceil(float(field.size.x) / config.chunk_cells.x)),
 			int(ceil(float(field.size.z) / config.chunk_cells.z)))
 	_layers = int(ceil(float(field.size.y) / config.chunk_cells.y))
@@ -74,6 +84,22 @@ func _ready() -> void:
 	else:
 		_build_skin()
 	Game.debug_flag_changed.connect(func(_flag: StringName, _on: bool) -> void: _debug_timer = 0.0)
+	add_to_group(&"dumps")
+
+
+## Расстояние от точки (мир) до ближайшей ещё не вынутой ценной вещи; дальше limit — INF.
+func nearest_loot_distance(point: Vector3, limit: float) -> float:
+	var local: Vector3 = to_local(point)
+	var best: float = limit * limit
+	var found: bool = false
+	for i: int in field.sites.size():
+		if field.sites[i]["taken"]:
+			continue
+		var d: float = field.cell_base(field.sites[i]["anchor"]).distance_squared_to(local)
+		if d < best:
+			best = d
+			found = true
+	return sqrt(best) if found else INF
 
 
 # --- подгрузка -------------------------------------------------------------------
@@ -84,6 +110,33 @@ func _ready() -> void:
 func prime(point: Vector3, radius: float) -> void:
 	for col: Vector2i in _columns_near(to_local(point), radius):
 		_load_column(col)
+	_prewarm(point)
+
+
+## Первый кусок, вынутый из кучи, и первые крошки заставляли видеокарту готовить
+## шейдеры прямо в игре — кадр проседал. Показываем всё это заранее под землёй у старта.
+func _prewarm(point: Vector3) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var warm: Array[Node] = []
+	var all: Array[ItemData] = []
+	all.append_array(config.junk)
+	all.append_array(config.loot)
+	for i: int in all.size():
+		var item: Item = ItemDb.spawn(all[i], _rng)
+		item.freeze = true
+		item.collision_layer = 0
+		item.collision_mask = 0
+		item.remove_from_group(&"items")
+		item.position = to_local(point) + Vector3((i % 6 - 2.5) * 0.9, -2.5, -(i / 6) * 0.9)
+		add_child(item)
+		item.remove_from_group(&"items")
+		warm.append(item)
+	_crumbs(to_local(point) + Vector3(0.0, -2.0, 0.0), 8, 0.5)
+	get_tree().create_timer(1.0).timeout.connect(func() -> void:
+		for node: Node in warm:
+			if is_instance_valid(node):
+				node.queue_free())
 
 
 func _column_center(col: Vector2i) -> Vector3:
@@ -286,12 +339,21 @@ func _chunk_of(c: Vector3i) -> Vector3i:
 
 
 func _mark_dirty(c: Vector3i) -> void:
-	# меняется сама ячейка и видимость шести соседей
-	for d: Vector3i in [Vector3i.ZERO, Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT,
-			Vector3i.FORWARD, Vector3i.BACK]:
-		var n: Vector3i = c + d
-		if field.in_bounds(n):
-			_dirty[_chunk_of(n)] = true
+	# меняется сама ячейка, видимость шести соседей и «набивка» за ними — всё в двух ячейках вокруг
+	for dx: int in [-2, 0, 2]:
+		for dy: int in [-2, 0, 2]:
+			for dz: int in [-2, 0, 2]:
+				var n: Vector3i = c + Vector3i(dx, dy, dz)
+				if field.in_bounds(n):
+					_dirty[_chunk_of(n)] = true
+
+
+## Спрятанная ячейка, у которой сосед — наружный (сам сосед виден).
+func _behind_surface(c: Vector3i) -> bool:
+	for d: Vector3i in [Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+		if field.is_exposed(c + d):
+			return true
+	return false
 
 
 func _flush_dirty() -> void:
@@ -309,6 +371,7 @@ func _rebuild(key: Vector3i) -> void:
 		per_kind[i] = []
 	var shape_cells: PackedInt32Array = []
 	var shape_xf: Array[Transform3D] = []
+	var cores: Array[Transform3D] = []
 	var half_up := Vector3.UP * config.cell_size.y * 0.5
 	for y: int in range(key.y * cc.y, mini((key.y + 1) * cc.y, field.size.y)):
 		for z: int in range(key.z * cc.z, mini((key.z + 1) * cc.z, field.size.z)):
@@ -318,12 +381,16 @@ func _rebuild(key: Vector3i) -> void:
 				var v: int = field.cells[i]
 				if v == DumpField.EMPTY:
 					continue
+				var exposed: bool = field.is_exposed(c)
+				if not exposed:
+					# спрятанная ячейка сразу за наружным слоем: рисуем тёмным блоком
+					if _behind_surface(c):
+						cores.append(Transform3D(Basis.IDENTITY, field.cell_base(c) + half_up))
+					continue
 				if v < 0:
 					var site: int = -v - 1
-					if not _site_nodes.has(site) and field.is_exposed(c):
+					if not _site_nodes.has(site):
 						_spawn_site(site)
-					continue
-				if not field.is_exposed(c):
 					continue
 				var xf: Transform3D = field.piece_transform(c)
 				per_kind[v - 1].append(xf * _mesh_offsets[v - 1])
@@ -336,7 +403,7 @@ func _rebuild(key: Vector3i) -> void:
 
 	var chunk: DumpChunk = _chunks.get(key)
 	if chunk == null:
-		if shape_cells.is_empty():
+		if shape_cells.is_empty() and cores.is_empty():
 			return
 		chunk = DumpChunk.new()
 		chunk.body = StaticBody3D.new()
@@ -353,6 +420,17 @@ func _rebuild(key: Vector3i) -> void:
 	PhysicsServer3D.body_clear_shapes(rid)
 	for xf: Transform3D in shape_xf:
 		PhysicsServer3D.body_add_shape(rid, _box.get_rid(), xf)
+	if chunk.core == null and not cores.is_empty():
+		chunk.core = MultiMeshInstance3D.new()
+		chunk.core.multimesh = MultiMesh.new()
+		chunk.core.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		chunk.core.multimesh.mesh = _core_mesh
+		chunk.core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		chunk.body.add_child(chunk.core)
+	if chunk.core != null:
+		chunk.core.multimesh.instance_count = cores.size()
+		for n: int in cores.size():
+			chunk.core.multimesh.set_instance_transform(n, cores[n])
 	for k: int in per_kind.size():
 		var list: Array = per_kind[k]
 		var mmi: MultiMeshInstance3D = chunk.instances[k]

@@ -9,6 +9,7 @@ var _jump_queued: bool = false
 var _flop_queued: bool = false
 var _flashlight_queued: bool = false
 var _interact_queued: bool = false
+var _slot_queued: int = 0
 ## Была ли мышь вообще: с геймпадом захват курсора не обязателен
 var _mouse_seen: bool = false
 
@@ -29,6 +30,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_flashlight_queued = true
 	elif event.is_action_pressed(&"interact"):
 		_interact_queued = true
+	elif event.is_action_pressed(&"slot_1"):
+		_slot_queued = 1
+	elif event.is_action_pressed(&"slot_2"):
+		_slot_queued = 2
+	elif event.is_action_pressed(&"slot_3"):
+		_slot_queued = 3
 	elif event.is_action_pressed(&"pause"):
 		var captured: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
@@ -56,6 +63,7 @@ func sample() -> PlayerInput:
 	if not enabled or DebugMenu.is_open():
 		_flashlight_queued = false
 		_interact_queued = false
+		_slot_queued = 0
 		_jump_queued = false
 		_flop_queued = false
 		return input
@@ -72,6 +80,8 @@ func sample() -> PlayerInput:
 	input.flashlight_pressed = _flashlight_queued
 	input.interact_pressed = _interact_queued
 	_interact_queued = false
+	input.slot_pressed = _slot_queued
+	_slot_queued = 0
 	_flashlight_queued = false
 	_jump_queued = false
 	_flop_queued = false

@@ -17,6 +17,12 @@ static func all() -> Array[ItemData]:
 	return out
 
 
+## Инструмент по id (res://data/tools/).
+static func tool(id: StringName) -> ItemData:
+	var path: String = "res://data/tools/%s.tres" % id
+	return load(path) if ResourceLoader.exists(path) else null
+
+
 static func spawn(item_data: ItemData, rng: RandomNumberGenerator) -> Item:
 	var item: Item = (load(ITEM_SCENE) as PackedScene).instantiate()
 	item.setup(item_data, rng)

@@ -109,3 +109,15 @@ YARD_LINE_5,Маловато будет.,Not much there.
 YARD_LINE_QUOTA,Норма есть. Хозяин будет доволен.,That's the quota. The Boss will be pleased.
 YARD_LINE_TRASH,Мусор не беру. Убери с весов.,I don't take trash. Get it off the scale.
 YARD_LINE_EMPTY,На весах пусто.,The scale is empty.
+TOOL_SHOVEL,Лопата,Shovel
+TOOL_CROWBAR,Лом,Crowbar
+TOOL_METAL_DETECTOR,Металлоискатель,Metal detector
+TOOL_HEADLAMP,Налобный фонарь,Headlamp
+HUD_BELT_EMPTY,пусто,empty
+HUD_TOOL_HINT,ЛКМ — взять · 1 2 3 — на пояс,LMB to grab · 1 2 3 to belt
+HUD_BELT_HINT,1 2 3 — повесить на пояс,1 2 3 to hang on the belt
+SHOP_SHOVEL_DESC,копать быстро (ПКМ),dig fast (RMB)
+SHOP_CROWBAR_DESC,поднимаешь в полтора раза больше,lift half as much again
+SHOP_DETECTOR_DESC,пищит рядом с ценным в куче,beeps near loot in the heap
+SHOP_HEADLAMP_DESC,фонарь ярче и шире,a brighter, wider light
+SHOP_HINT_BELT_FULL,%s: пояс занят — освободи слот,%s: belt is full — free a slot

@@ -23,6 +23,10 @@ enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRA
 @export var break_speed: float = 0.0
 ## Какая доля цены теряется при полном разбитии (0.7 = -70%)
 @export_range(0.0, 1.0) var break_loss: float = 0.0
+@export_group("Инструмент")
+## Что это за инструмент (shovel, crowbar, metal_detector, headlamp); пусто — обычная вещь.
+## Инструмент работает, пока висит на поясе.
+@export var tool: StringName = &""
 @export_group("В куче")
 ## Сколько ячеек решётки свалки занимает вещь, пока закопана (x, y, z)
 @export var dump_cells: Vector3i = Vector3i(1, 1, 1)
@@ -41,7 +45,11 @@ func random_mass(rng: RandomNumberGenerator) -> float:
 
 ## Мусор, который ничего не стоит (куски кучи).
 func is_trash() -> bool:
-	return metal == Metal.TRASH and unit_price == 0
+	return metal == Metal.TRASH and unit_price == 0 and tool.is_empty()
+
+
+func is_tool() -> bool:
+	return not tool.is_empty()
 
 
 func is_fragile() -> bool:

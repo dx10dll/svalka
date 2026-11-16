@@ -7,3 +7,5 @@ extends Resource
 @export var desc_key: String
 ## Цена, ₽
 @export var price: int = 1000
+## Если это инструмент: id предмета из res://data/tools/ (пусто — улучшение буханки)
+@export var tool: StringName = &""

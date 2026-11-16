@@ -148,6 +148,7 @@ func finish() -> void:
 	finished = true
 	var earned: int = run.earned
 	var quota: int = run.quota()
+	run.belt = _player.belt.ids()      # что донесли на поясе — то и осталось
 	var outcome: RunState.Outcome = run.finish_night()
 	Game.set_phase(Game.Phase.SUMMARY)
 	Game.save_run()

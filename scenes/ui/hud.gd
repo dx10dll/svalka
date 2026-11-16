@@ -11,6 +11,7 @@ var _player: PlayerController
 var _buried: ColorRect
 var _buried_material: ShaderMaterial
 var _struggle_shake: float = 0.0
+var _belt: Label
 
 
 func setup(grab: PlayerGrab) -> void:
@@ -51,6 +52,19 @@ func setup(grab: PlayerGrab) -> void:
 	_info.add_theme_constant_override(&"outline_size", 5)
 	_info.add_theme_font_size_override(&"font_size", 18)
 	root.add_child(_info)
+
+	_belt = Label.new()
+	_belt.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_belt.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_belt.offset_left = 16.0
+	_belt.offset_top = -128.0
+	_belt.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_belt.add_theme_constant_override(&"outline_size", 5)
+	_belt.add_theme_font_size_override(&"font_size", 17)
+	root.add_child(_belt)
+	if _player != null and _player.belt != null:
+		_player.belt.changed.connect(_update_belt)
+		_update_belt()
 
 	_charge = ProgressBar.new()
 	_charge.show_percentage = false
@@ -113,6 +127,14 @@ func _process(delta: float) -> void:
 	_charge.value = _grab.throw_charge
 
 
+func _update_belt() -> void:
+	var parts: PackedStringArray = []
+	for i: int in PlayerBelt.SLOTS:
+		var item: Item = _player.belt.slots[i]
+		parts.append("%d  %s" % [i + 1, tr(item.data.name_key) if item != null else tr("HUD_BELT_EMPTY")])
+	_belt.text = "\n".join(parts)
+
+
 ## Груз машины: сколько лежит и сколько можно; перегруз — с пометкой.
 func _cargo_line(van: Van) -> String:
 	var load_kg: float = van.cargo_mass()
@@ -128,11 +150,13 @@ func _describe(body: RigidBody3D) -> String:
 	if item != null and item.data != null:
 		parts.append(tr(item.data.name_key))
 	parts.append(Fmt.kg(body.mass))
-	if item != null and item.data != null and not item.data.is_trash():
+	if item != null and item.data != null and not item.data.is_trash() and not item.data.is_tool():
 		parts.append(Fmt.rub(item.value()))
 	var line: String = " · ".join(parts)
 	if not _grab.can_lift(body.mass):
 		line += "\n" + tr("HUD_TOO_HEAVY")
 	elif _grab.held == null:
-		line += "\n" + tr("HUD_GRAB_HINT")
+		line += "\n" + tr("HUD_TOOL_HINT" if item != null and item.data.is_tool() else "HUD_GRAB_HINT")
+	elif item != null and _player != null and _player.belt.can_stow(item) and _player.belt.free_slot() >= 0:
+		line += "\n" + tr("HUD_BELT_HINT")
 	return line

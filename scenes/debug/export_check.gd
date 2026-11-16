@@ -35,7 +35,12 @@ func _ready() -> void:
 	if run.quota() != 1350 or run.economy.night_seconds < 60.0:
 		print("  ПРОВАЛ: экономика не загрузилась (норма %d)" % run.quota())
 		failed += 1
-	if ShopDb.all().size() < 3 or ShopDb.all()[0] == null or ShopDb.all()[0].price <= 0 \
+	for tool_id: StringName in [&"shovel", &"crowbar", &"metal_detector", &"headlamp"]:
+		var tool_data: ItemData = ItemDb.tool(tool_id)
+		if tool_data == null or tool_data.model == null or tool_data.tool != tool_id:
+			print("  ПРОВАЛ: инструмент %s не загрузился" % tool_id)
+			failed += 1
+	if ShopDb.all().size() < 7 or ShopDb.all()[0] == null or ShopDb.all()[0].price <= 0 \
 			or load("res://scenes/game/garage.tscn") == null:
 		print("  ПРОВАЛ: лавка или гараж не загрузились")
 		failed += 1

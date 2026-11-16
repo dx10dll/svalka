@@ -147,7 +147,7 @@ func items_on_scale() -> Array[Item]:
 func weigh() -> Dictionary:
 	var result: Dictionary = {"count": 0, "mass": 0.0, "value": 0, "trash": 0}
 	for item: Item in items_on_scale():
-		if item.data.is_trash():
+		if item.data.is_trash() or item.data.is_tool():
 			result["trash"] += 1
 			continue
 		result["count"] += 1
@@ -174,8 +174,8 @@ func sell() -> int:
 	var total: int = 0
 	var count: int = 0
 	for item: Item in items_on_scale():
-		if item.data.is_trash():
-			continue       # мусор остаётся лежать: не берём
+		if item.data.is_trash() or item.data.is_tool():
+			continue       # мусор и инструменты остаются лежать: не берём
 		var value: int = item.value()
 		total += value
 		count += 1
