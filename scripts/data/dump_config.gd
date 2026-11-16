@@ -24,6 +24,10 @@ extends Resource
 @export var junk_weight_top: PackedFloat32Array = []
 @export var junk_weight_deep: PackedFloat32Array = []
 @export var deep_depth: float = 3.0
+## Нижний, «советский» слой: ниже этой высоты над землёй в глубине кучи идут свои доли (пусто — слоя нет)
+@export var bottom_height: float = 0.0
+@export var junk_weight_bottom: PackedFloat32Array = []
+@export var loot_weight_bottom: PackedFloat32Array = []
 ## Ценные вещи и их доли у поверхности и в глубине
 @export var loot: Array[ItemData] = []
 @export var loot_weight_top: PackedFloat32Array = []
@@ -51,3 +55,8 @@ extends Resource
 @export var bury_radius: float = 2.3
 ## Сколько кусков ложится на засыпанного
 @export var bury_pieces: int = 6
+@export_group("Подгрузка")
+## Чанки строятся только ближе этого расстояния от игроков, м (0 — вся куча сразу)
+@export var stream_radius: float = 0.0
+## Сколько миллисекунд в кадр можно тратить на постройку чанков
+@export var stream_budget_ms: float = 3.0

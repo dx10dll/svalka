@@ -211,6 +211,40 @@ func _run() -> void:
 	_input.move = Vector2.ZERO
 	_check(reached > cfg.height * 0.8, "пешком и прыжками поднялись на %.1f м (вершина %.1f)" % [reached, top])
 
+	# 10. большая гора: подробные чанки только рядом с игроком
+	_dump.queue_free()
+	_player.queue_free()
+	await _wait(0.2)
+	var big_cfg: DumpConfig = load("res://data/dump_mountain.tres")
+	t0 = Time.get_ticks_msec()
+	var big := Dump.new()
+	big.config = big_cfg
+	big.dump_seed = 3
+	_scene.add_child(big)
+	big.prime(Vector3(0, 0, big_cfg.radius), 20.0)
+	var build_ms: int = Time.get_ticks_msec() - t0
+	var total_columns: int = big._columns.x * big._columns.y
+	var loaded_first: int = big._loaded.size()
+	_check(build_ms < 6000, "гора из %d ячеек готова за %d мс" % [big.field.solid_count(), build_ms])
+	_check(loaded_first > 10 and loaded_first < total_columns / 4, "подробно построено %d столбцов из %d" % [loaded_first, total_columns])
+	var top_big: float = 0.0
+	for h: int in big.field.heights:
+		top_big = maxf(top_big, h * big_cfg.cell_size.y)
+	_check(top_big > 25.0 and top_big < 45.0, "высота горы %.1f м" % top_big)
+	var walker := Node3D.new()
+	walker.add_to_group(&"players")
+	_scene.add_child(walker)
+	walker.global_position = Vector3(0, 0, -big_cfg.radius)
+	await _wait(3.0)
+	var near_col: Vector2i = Vector2i(big._columns.x / 2, 1 + int(big_cfg.margin / 4.0))
+	_check(big._loaded.has(near_col), "у нового места чанки подгрузились")
+	_check(not big._loaded.has(Vector2i(big._columns.x / 2, big._columns.y - 2 - int(big_cfg.margin / 4.0))),
+			"у старого места чанки выгружены (построено %d)" % big._loaded.size())
+	var body_count: int = 0
+	for chunk: Dump.DumpChunk in big._chunks.values():
+		body_count += chunk.shape_cells.size()
+	_check(body_count > 500 and body_count < 40000, "твёрдых ячеек рядом с игроком: %d" % body_count)
+
 	print("Тесты кучи: прошло %d, провалено %d" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 

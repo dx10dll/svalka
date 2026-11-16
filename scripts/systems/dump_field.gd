@@ -18,6 +18,8 @@ var size: Vector3i
 var origin: Vector3
 ## Содержимое: 0 — пусто, k > 0 — мусор config.junk[k - 1], k < 0 — место sites[-k - 1]
 var cells: PackedInt32Array
+## Сколько ячеек было в каждом столбике при генерации (для дальнего вида), индекс z * size.x + x
+var heights: PackedInt32Array
 ## Места ценных вещей: {"item": индекс в config.loot, "anchor": Vector3i, "cells": Array[int], "taken": bool}
 var sites: Array[Dictionary] = []
 ## Куски, которые упали и заснули не по решётке: индекс ячейки -> их точное положение
@@ -145,16 +147,29 @@ func site_transform(site_index: int) -> Transform3D:
 
 # --- генерация -----------------------------------------------------------------
 
-func _pick(weights_top: PackedFloat32Array, weights_deep: PackedFloat32Array, depth_k: float, roll: float) -> int:
+## Выбор по долям трёх слоёв: у поверхности, в глубине и в нижнем «советском» слое.
+## depth_k — глубина 0..1, low_k — близость к земле 0..1 (нижний слой только в глубине).
+func _pick(weights_top: PackedFloat32Array, weights_deep: PackedFloat32Array, weights_bottom: PackedFloat32Array,
+		depth_k: float, low_k: float, roll: float) -> int:
+	var n: int = weights_top.size()
+	var bottom_k: float = depth_k * low_k if weights_bottom.size() == n else 0.0
 	var total: float = 0.0
-	for i: int in weights_top.size():
-		total += lerpf(weights_top[i], weights_deep[i], depth_k)
+	for i: int in n:
+		var w: float = lerpf(weights_top[i], weights_deep[i], depth_k)
+		total += lerpf(w, weights_bottom[i], bottom_k) if bottom_k > 0.0 else w
 	var acc: float = 0.0
-	for i: int in weights_top.size():
-		acc += lerpf(weights_top[i], weights_deep[i], depth_k)
+	for i: int in n:
+		var w: float = lerpf(weights_top[i], weights_deep[i], depth_k)
+		acc += lerpf(w, weights_bottom[i], bottom_k) if bottom_k > 0.0 else w
 		if roll * total < acc:
 			return i
-	return weights_top.size() - 1
+	return n - 1
+
+
+func _low_k(height_above_ground: float) -> float:
+	if config.bottom_height <= 0.0:
+		return 0.0
+	return clampf(1.0 - height_above_ground / config.bottom_height, 0.0, 1.0)
 
 
 func _generate() -> void:
@@ -162,11 +177,13 @@ func _generate() -> void:
 	# 1. мусор: всё, что под поверхностью
 	var depth: PackedFloat32Array = []
 	depth.resize(cells.size())
+	heights.resize(size.x * size.z)
 	for z: int in size.z:
 		for x: int in size.x:
 			var wx: float = origin.x + (x + 0.5) * cs.x
 			var wz: float = origin.z + (z + 0.5) * cs.z
 			var h: float = height_at(wx, wz)
+			var filled: int = 0
 			for y: int in size.y:
 				var mid: float = (y + 0.5) * cs.y
 				if mid >= h:
@@ -175,7 +192,10 @@ func _generate() -> void:
 				var k: float = clampf((h - mid) / config.deep_depth, 0.0, 1.0)
 				var i: int = index_of(c)
 				depth[i] = k
-				cells[i] = _pick(config.junk_weight_top, config.junk_weight_deep, k, hash01(x, y, z, 1)) + 1
+				cells[i] = _pick(config.junk_weight_top, config.junk_weight_deep, config.junk_weight_bottom,
+						k, _low_k(mid), hash01(x, y, z, 1)) + 1
+				filled += 1
+			heights[z * size.x + x] = filled
 	# 2. ценные вещи: занимают блок ячеек вместо мусора
 	if config.loot.is_empty():
 		return
@@ -188,7 +208,8 @@ func _generate() -> void:
 				var k: float = depth[i]
 				if hash01(x, y, z, 2) >= lerpf(config.loot_chance_top, config.loot_chance_deep, k):
 					continue
-				var item_index: int = _pick(config.loot_weight_top, config.loot_weight_deep, k, hash01(x, y, z, 3))
+				var item_index: int = _pick(config.loot_weight_top, config.loot_weight_deep, config.loot_weight_bottom,
+						k, _low_k((y + 0.5) * cs.y), hash01(x, y, z, 3))
 				var block: Vector3i = config.loot[item_index].dump_cells
 				var claimed: Array[int] = []
 				var fits: bool = true

@@ -33,6 +33,15 @@ var _site_nodes: Dictionary[int, Item] = {}
 var _pending: Array[Dictionary] = []
 var _rest_time: Dictionary[int, float] = {}
 var _rng := RandomNumberGenerator.new()
+var _columns := Vector2i.ZERO
+var _layers: int = 0
+## Какие столбцы чанков построены подробно
+var _loaded: Dictionary[Vector2i, bool] = {}
+var _skin: Dictionary[Vector2i, MeshInstance3D] = {}
+var _queue: Array[Vector2i] = []
+var _stream_timer: float = 0.0
+var _debug_mesh: MeshInstance3D
+var _debug_timer: float = 0.0
 
 
 class DumpChunk:
@@ -55,11 +64,218 @@ func _ready() -> void:
 		model.free()
 	_box = BoxShape3D.new()
 	_box.size = config.cell_size
+	_columns = Vector2i(int(ceil(float(field.size.x) / config.chunk_cells.x)),
+			int(ceil(float(field.size.z) / config.chunk_cells.z)))
+	_layers = int(ceil(float(field.size.y) / config.chunk_cells.y))
+	if config.stream_radius <= 0.0:
+		for cz: int in _columns.y:
+			for cx: int in _columns.x:
+				_load_column(Vector2i(cx, cz))
+	else:
+		_build_skin()
+	Game.debug_flag_changed.connect(func(_flag: StringName, _on: bool) -> void: _debug_timer = 0.0)
+
+
+# --- подгрузка -------------------------------------------------------------------
+# Большая гора целиком не строится: подробные чанки (куски и коллизии) есть только
+# рядом с игроками, остальное показано грубой «шкурой» по высотам столбиков.
+
+## Сразу построить всё в радиусе от точки (перед появлением игрока).
+func prime(point: Vector3, radius: float) -> void:
+	for col: Vector2i in _columns_near(to_local(point), radius):
+		_load_column(col)
+
+
+func _column_center(col: Vector2i) -> Vector3:
+	var cs: Vector3 = config.cell_size
 	var cc: Vector3i = config.chunk_cells
-	for cz: int in int(ceil(float(field.size.z) / cc.z)):
-		for cy: int in int(ceil(float(field.size.y) / cc.y)):
-			for cx: int in int(ceil(float(field.size.x) / cc.x)):
-				_rebuild(Vector3i(cx, cy, cz))
+	return field.origin + Vector3((col.x + 0.5) * cc.x * cs.x, 0.0, (col.y + 0.5) * cc.z * cs.z)
+
+
+func _columns_near(point: Vector3, radius: float) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var step: Vector2 = Vector2(config.chunk_cells.x * config.cell_size.x, config.chunk_cells.z * config.cell_size.z)
+	var lo := Vector2i(int(floor((point.x - radius - field.origin.x) / step.x)), int(floor((point.z - radius - field.origin.z) / step.y)))
+	var hi := Vector2i(int(floor((point.x + radius - field.origin.x) / step.x)), int(floor((point.z + radius - field.origin.z) / step.y)))
+	for cz: int in range(maxi(lo.y, 0), mini(hi.y, _columns.y - 1) + 1):
+		for cx: int in range(maxi(lo.x, 0), mini(hi.x, _columns.x - 1) + 1):
+			var col := Vector2i(cx, cz)
+			var c: Vector3 = _column_center(col)
+			if Vector2(c.x - point.x, c.z - point.z).length() <= radius and not _loaded.has(col):
+				out.append(col)
+	return out
+
+
+func _load_column(col: Vector2i) -> void:
+	_loaded[col] = true
+	for cy: int in _layers:
+		_rebuild(Vector3i(col.x, cy, col.y))
+	if _skin.has(col):
+		_skin[col].visible = false
+
+
+func _unload_column(col: Vector2i) -> void:
+	_loaded.erase(col)
+	for cy: int in _layers:
+		var key := Vector3i(col.x, cy, col.y)
+		var chunk: DumpChunk = _chunks.get(key)
+		if chunk != null:
+			chunk.body.queue_free()
+			_chunks.erase(key)
+	if _skin.has(col):
+		_skin[col].visible = true
+
+
+func _viewers() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for node: Node in get_tree().get_nodes_in_group(&"players"):
+		out.append(to_local((node as Node3D).global_position))
+	if out.is_empty():
+		var cam: Camera3D = get_viewport().get_camera_3d()
+		if cam != null:
+			out.append(to_local(cam.global_position))
+	return out
+
+
+func _stream(delta: float) -> void:
+	_stream_timer -= delta
+	if _stream_timer <= 0.0:
+		_stream_timer = 0.3
+		var viewers: Array[Vector3] = _viewers()
+		_queue.clear()
+		var seen: Dictionary[Vector2i, float] = {}
+		for v: Vector3 in viewers:
+			for col: Vector2i in _columns_near(v, config.stream_radius):
+				var c: Vector3 = _column_center(col)
+				var d: float = Vector2(c.x - v.x, c.z - v.z).length()
+				seen[col] = minf(seen.get(col, INF), d)
+		_queue.assign(seen.keys())
+		_queue.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return seen[a] > seen[b])  # ближние в конце
+		# слишком далёкое убираем
+		for col: Vector2i in _loaded.keys():
+			var c: Vector3 = _column_center(col)
+			var nearest: float = INF
+			for v: Vector3 in viewers:
+				nearest = minf(nearest, Vector2(c.x - v.x, c.z - v.z).length())
+			if nearest > config.stream_radius + 10.0:
+				_unload_column(col)
+	var deadline: int = Time.get_ticks_usec() + int(config.stream_budget_ms * 1000.0)
+	while not _queue.is_empty() and Time.get_ticks_usec() < deadline:
+		var col: Vector2i = _queue.pop_back()
+		if not _loaded.has(col):
+			_load_column(col)
+
+
+## Дальний вид: по плитке на столбец чанков, ступеньки по высотам столбиков, цвет по вершинам.
+func _build_skin() -> void:
+	var cs: Vector3 = config.cell_size
+	var cc: Vector3i = config.chunk_cells
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 1.0
+	var tints: Array[Color] = [Color(0.09, 0.085, 0.08), Color(0.16, 0.14, 0.12), Color(0.08, 0.1, 0.17),
+			Color(0.42, 0.4, 0.36), Color(0.3, 0.21, 0.13), Color(0.13, 0.12, 0.1), Color(0.2, 0.18, 0.15)]
+	for cz: int in _columns.y:
+		for cx: int in _columns.x:
+			var verts := PackedVector3Array()
+			var normals := PackedVector3Array()
+			var colors := PackedColorArray()
+			for z: int in range(cz * cc.z, mini((cz + 1) * cc.z, field.size.z)):
+				for x: int in range(cx * cc.x, mini((cx + 1) * cc.x, field.size.x)):
+					var h: int = field.heights[z * field.size.x + x]
+					if h == 0:
+						continue
+					var base: Vector3 = field.origin + Vector3(x * cs.x, 0.0, z * cs.z)
+					var top: float = h * cs.y
+					var tint: Color = tints[int(field.hash01(x, h, z, 31) * tints.size()) % tints.size()]
+					_quad(verts, normals, colors, base + Vector3(0, top, 0), Vector3(0, 0, cs.z), Vector3(cs.x, 0, 0), tint)
+					# стенки к более низким соседям
+					for side: Array in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
+						var nx: int = x + side[0]
+						var nz: int = z + side[1]
+						var nh: int = 0
+						if nx >= 0 and nz >= 0 and nx < field.size.x and nz < field.size.z:
+							nh = field.heights[nz * field.size.x + nx]
+						if nh >= h:
+							continue
+						var drop := Vector3(0, (nh - h) * cs.y, 0)
+						var dark: Color = tint * 0.7
+						match side:
+							[-1, 0]: _quad(verts, normals, colors, base + Vector3(0, top, 0), drop, Vector3(0, 0, cs.z), dark)
+							[1, 0]: _quad(verts, normals, colors, base + Vector3(cs.x, top, 0), Vector3(0, 0, cs.z), drop, dark)
+							[0, -1]: _quad(verts, normals, colors, base + Vector3(0, top, 0), Vector3(cs.x, 0, 0), drop, dark)
+							[0, 1]: _quad(verts, normals, colors, base + Vector3(0, top, cs.z), drop, Vector3(cs.x, 0, 0), dark)
+			if verts.is_empty():
+				continue
+			var arrays: Array = []
+			arrays.resize(Mesh.ARRAY_MAX)
+			arrays[Mesh.ARRAY_VERTEX] = verts
+			arrays[Mesh.ARRAY_NORMAL] = normals
+			arrays[Mesh.ARRAY_COLOR] = colors
+			var mesh := ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			var mi := MeshInstance3D.new()
+			mi.mesh = mesh
+			mi.material_override = mat
+			add_child(mi)
+			_skin[Vector2i(cx, cz)] = mi
+
+
+## Четырёхугольник из точки o со сторонами a и b (нормаль a × b), двумя треугольниками.
+func _quad(verts: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray,
+		o: Vector3, a: Vector3, b: Vector3, color: Color) -> void:
+	var n: Vector3 = a.cross(b).normalized()
+	for p: Vector3 in [o, o + a, o + a + b, o, o + a + b, o + b]:
+		verts.append(p)
+		normals.append(n)
+		colors.append(color)
+
+
+## Отладка (F1 «показать чанки и опоры»): рамки построенных чанков и куски, которые вот-вот поедут.
+func _update_debug(delta: float) -> void:
+	var on: bool = Game.debug_flag(&"show_chunks")
+	if _debug_mesh == null:
+		if not on:
+			return
+		_debug_mesh = MeshInstance3D.new()
+		_debug_mesh.mesh = ImmediateMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		_debug_mesh.material_override = mat
+		add_child(_debug_mesh)
+	_debug_mesh.visible = on
+	_debug_timer -= delta
+	if not on or _debug_timer > 0.0:
+		return
+	_debug_timer = 0.25
+	var im: ImmediateMesh = _debug_mesh.mesh
+	im.clear_surfaces()
+	var cs: Vector3 = config.cell_size
+	var size: Vector3 = Vector3(config.chunk_cells) * cs
+	im.surface_begin(Mesh.PRIMITIVE_LINES)
+	var any: bool = false
+	for key: Vector3i in _chunks:
+		_wire_box(im, field.origin + Vector3(key) * size, size, Color(0.3, 1.0, 0.4))
+		any = true
+	for p: Dictionary in _pending:
+		for c: Vector3i in p["junk"]:
+			_wire_box(im, field.cell_base(c) - Vector3(cs.x, 0, cs.z) * 0.5, cs, Color(1.0, 0.2, 0.15))
+			any = true
+	if not any:
+		_wire_box(im, Vector3.ZERO, Vector3.ONE * 0.01, Color.BLACK)
+	im.surface_end()
+
+
+func _wire_box(im: ImmediateMesh, o: Vector3, s: Vector3, color: Color) -> void:
+	var corners: Array[Vector3] = []
+	for i: int in 8:
+		corners.append(o + Vector3(s.x * (i & 1), s.y * ((i >> 1) & 1), s.z * ((i >> 2) & 1)))
+	for edge: Array in [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]:
+		im.surface_set_color(color)
+		im.surface_add_vertex(corners[edge[0]])
+		im.surface_set_color(color)
+		im.surface_add_vertex(corners[edge[1]])
 
 
 # --- отрисовка и коллизии чанков -------------------------------------------------
@@ -80,7 +296,8 @@ func _mark_dirty(c: Vector3i) -> void:
 
 func _flush_dirty() -> void:
 	for key: Vector3i in _dirty:
-		_rebuild(key)
+		if _loaded.has(Vector2i(key.x, key.z)):   # непостроенное возьмёт изменения, когда подгрузится
+			_rebuild(key)
 	_dirty.clear()
 
 
@@ -254,6 +471,12 @@ func _physics_process(delta: float) -> void:
 			_pending.remove_at(i)
 			_collapse(p)
 	_update_resting(delta)
+
+
+func _process(delta: float) -> void:
+	if config.stream_radius > 0.0:
+		_stream(delta)
+	_update_debug(delta)
 
 
 func _collapse(p: Dictionary) -> void:

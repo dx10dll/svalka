@@ -37,3 +37,4 @@ HUD_DIG_HINT,ЛКМ — вытащить · ПКМ — лопата,LMB to pull 
 SCENE_DUMP,Этап 3: куча,Stage 3: the heap
 HINT_DUMP,"ЛКМ по куче — вытащить кусок · F фонарь · вещи торчат из мусора · уберёшь опору — поедет завал · F1 отладка","LMB on the heap pulls a piece out · F flashlight · loot sticks out of the junk · remove a support and it slides · F1 debug"
 HUD_BURIED,"Завалило! Воздуха на %d с\nПробел — выбираться",Buried! Air for %d s\nSpace to struggle out
+SCENE_MOUNTAIN,Этап 3: гора,Stage 3: the mountain
