@@ -114,6 +114,8 @@ extends Resource
 @export var landing_spring: float = 120.0
 @export var landing_damping: float = 16.0
 @export_group("Фонарь")
+## Высота глаз над сиденьем машины, м
+@export var seat_eye_height: float = 0.8
 @export var flashlight_energy: float = 5.0
 @export var flashlight_range: float = 22.0
 ## Половина угла луча, градусы

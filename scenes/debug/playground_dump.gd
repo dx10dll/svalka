@@ -7,6 +7,7 @@ const PLAYER_SCENE: String = "res://scenes/player/player.tscn"
 var dump: Dump
 ## Окружение свалки (есть только у большой горы)
 var site: DumpSite
+var van: Van
 var _player: PlayerController
 
 
@@ -61,4 +62,9 @@ func _populate() -> void:
 	_player = (load(PLAYER_SCENE) as PackedScene).instantiate()
 	_player.position = Vector3(0.0, 0.05, r + (7.0 if site != null else 1.5))
 	add_child(_player)
+	# буханка: на разворотной площадке задом к горе
+	van = Van.new()
+	van.name = "Van"
+	van.position = Vector3(3.2, 0.25, r + 5.5) if site != null else Vector3(5.0, 0.25, r + 5.0)
+	add_child(van)
 	_build_hint("HINT_DUMP")

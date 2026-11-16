@@ -79,7 +79,15 @@ func _process(delta: float) -> void:
 		_info.text = tr("HUD_BURIED") % int(ceil(_player.air_left))
 		return
 	_buried.visible = false
+	if _player != null and _player.mode == PlayerController.Mode.SEATED:
+		var van: Van = _player.vehicle
+		_dot.visible = false
+		_charge.visible = false
+		_info.offset_top = 230.0     # за рулём надпись внизу: не закрывает дорогу
+		_info.text = "%d %s · %s\n%s" % [int(absf(van.forward_speed()) * 3.6), tr("UNIT_KMH"), _cargo_line(van), tr("HUD_VAN_LEAVE")]
+		return
 	_dot.visible = true
+	_info.offset_top = 26.0
 	var target: RigidBody3D = _grab.held if _grab.held != null else _grab.focus
 	_dot.color = Color(1.0, 0.75, 0.35) if target != null or _grab.focus_dump != null else Color(1, 1, 1, 0.55)
 	if target != null and is_instance_valid(target):
@@ -87,10 +95,24 @@ func _process(delta: float) -> void:
 	elif _grab.focus_dump != null:
 		var junk: ItemData = _grab.focus_dump.junk_at(_grab.focus_cell)
 		_info.text = (tr(junk.name_key) + "\n" if junk != null else "") + tr("HUD_DIG_HINT")
+	elif _grab.focus_van != null:
+		_dot.color = Color(1.0, 0.75, 0.35)
+		_info.text = _cargo_line(_grab.focus_van)
+		if not _grab.focus_action.is_empty():
+			_info.text += "\n" + tr(_grab.focus_action["hint"])
 	else:
 		_info.text = ""
 	_charge.visible = _grab.throw_charge > 0.02
 	_charge.value = _grab.throw_charge
+
+
+## Груз машины: сколько лежит и сколько можно; перегруз — с пометкой.
+func _cargo_line(van: Van) -> String:
+	var load_kg: float = van.cargo_mass()
+	var line: String = tr("HUD_VAN_CARGO") % [Fmt.kg(load_kg), Fmt.kg(van.feel.capacity)]
+	if load_kg > van.feel.capacity:
+		line += " · " + tr("HUD_VAN_OVERLOAD")
+	return line
 
 
 func _describe(body: RigidBody3D) -> String:

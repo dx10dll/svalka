@@ -38,3 +38,11 @@ SCENE_DUMP,Этап 3: куча,Stage 3: the heap
 HINT_DUMP,"ЛКМ по куче — вытащить кусок · F фонарь · вещи торчат из мусора · уберёшь опору — поедет завал · F1 отладка","LMB on the heap pulls a piece out · F flashlight · loot sticks out of the junk · remove a support and it slides · F1 debug"
 HUD_BURIED,"Завалило! Воздуха на %d с\nПробел — выбираться",Buried! Air for %d s\nSpace to struggle out
 SCENE_MOUNTAIN,Этап 3: гора,Stage 3: the mountain
+HUD_VAN_CARGO,Груз %s из %s,Cargo %s of %s
+HUD_VAN_OVERLOAD,ПЕРЕГРУЗ,OVERLOADED
+HUD_VAN_LEAVE,WASD — ехать · пробел — тормоз · F — фары · E — выйти,WASD drive · Space brake · F headlights · E get out
+HINT_VAN_DRIVE,E — сесть за руль,E to drive
+HINT_VAN_DOORS_OPEN,E — открыть двери,E to open the doors
+HINT_VAN_DOORS_CLOSE,E — закрыть двери,E to close the doors
+UNIT_KMH,км/ч,km/h
+HINT_VAN,"E у кабины — за руль · E у задних дверей — открыть кузов · груз кладём в кузов руками · перегруз душит мотор","E at the cab to drive · E at the rear doors to open the bay · carry cargo in by hand · overload chokes the engine"

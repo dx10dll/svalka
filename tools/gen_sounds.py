@@ -178,6 +178,24 @@ def build() -> None:
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes((np.clip(base / np.abs(base).max() * 0.7, -1, 1) * 32767).astype("<i2").tobytes())
+    # мотор: вспышки четырёх цилиндров на холостых, целое число периодов — цикл без шва
+    rng = np.random.default_rng(800)
+    n = RATE
+    t = np.arange(n) / RATE
+    eng = np.zeros(n)
+    for harm, amp in ((1, 1.0), (2, 0.7), (3, 0.45), (4, 0.5), (6, 0.25), (8, 0.2), (12, 0.1)):
+        eng += amp * np.sin(2 * np.pi * 26 * harm * t + rng.uniform(0, 6.28))
+    eng *= 1.0 + 0.35 * np.sin(2 * np.pi * 13 * t)             # неровная работа
+    spec = np.fft.rfft(rng.standard_normal(n))
+    kk = np.linspace(0.0, 1.0, spec.size)
+    spec *= (kk > 0.02) & (kk < 0.25)
+    rattle = np.fft.irfft(spec, n)
+    eng = eng / np.abs(eng).max() + 0.35 * rattle / np.abs(rattle).max() * (0.6 + 0.4 * np.sin(2 * np.pi * 26 * t))
+    with wave.open(str(loops / "engine_loop.wav"), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes((np.clip(eng / np.abs(eng).max() * 0.75, -1, 1) * 32767).astype("<i2").tobytes())
     print("Звуков:", len(list(OUT.glob("*.wav"))))
 
 

@@ -23,7 +23,7 @@ signal struggled
 ## Выбрался (survived) или задохнулся
 signal buried_ended(survived: bool)
 
-enum Mode { NORMAL, MANTLE, DOWNED, BURIED }
+enum Mode { NORMAL, MANTLE, DOWNED, BURIED, SEATED }
 
 const FEEL_PATH: String = "res://data/player_feel.tres"
 
@@ -50,6 +50,11 @@ var mode_progress: float = 0.0
 var air_left: float = 0.0
 ## Куски, которые лежат на засыпанном игроке (их надо убрать, чтобы выбраться)
 var burying: Array[RigidBody3D] = []
+## Машина, в которой сидим, и поворот головы относительно неё (0 — прямо вперёд)
+var vehicle: Van
+var seat_look: float = 0.0
+## Где глаза сидящего, в осях машины
+var seat_eye_local := Vector3.ZERO
 
 ## Если задан, ввод берётся отсюда, а не с клавиатуры (автотесты, позже — сеть и боты)
 var scripted_input: PlayerInput = null
@@ -77,6 +82,7 @@ var _mantle_cooldown: float = 0.0
 var _getting_up: bool = false
 var _struggle: int = 0
 var _buried_total: int = 0
+var _sat_frame: int = -1
 
 
 func _ready() -> void:
@@ -121,7 +127,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if mode != Mode.DOWNED:
+	if mode == Mode.SEATED:
+		var seat_turn: Vector2 = _reader.take_look(delta)
+		seat_look = clampf(seat_look - seat_turn.x, -2.5, 2.5)
+		pitch = clampf(pitch - seat_turn.y, -1.2, 1.2)
+	elif mode != Mode.DOWNED:
 		var look: Vector2 = _reader.take_look(delta)
 		yaw = wrapf(yaw - look.x, -PI, PI)
 		pitch = clampf(pitch - look.y, -1.5, 1.5)
@@ -134,8 +144,11 @@ func _physics_process(delta: float) -> void:
 	_input = scripted_input if scripted_input != null else _reader.sample()
 	grab.tick(_input, delta)
 	if _input.flashlight_pressed:
-		flashlight_on = not flashlight_on
-		flashlight_toggled.emit(flashlight_on)
+		if mode == Mode.SEATED:
+			vehicle.set_headlights(not vehicle.headlights_on)   # за рулём F — фары
+		else:
+			flashlight_on = not flashlight_on
+			flashlight_toggled.emit(flashlight_on)
 	match mode:
 		Mode.NORMAL:
 			_tick_normal(delta)
@@ -145,6 +158,8 @@ func _physics_process(delta: float) -> void:
 			_tick_downed(delta)
 		Mode.BURIED:
 			_tick_buried(delta)
+		Mode.SEATED:
+			_tick_seated()
 	if global_position.y < -30.0:
 		respawn()
 
@@ -566,6 +581,66 @@ func _shove_off(piece: RigidBody3D) -> void:
 	piece.sleeping = false
 	var away := Vector3(randf_range(-1.0, 1.0), 1.6, randf_range(-1.0, 1.0))
 	piece.apply_central_impulse(away * piece.mass * 1.8)
+
+
+# --- за рулём -------------------------------------------------------------------
+
+## Сесть в машину на место seat. Тело игрока едет вместе с машиной без коллизии.
+func sit(van: Van, seat: Node3D) -> void:
+	if mode != Mode.NORMAL:
+		return
+	grab.release(false)
+	mode = Mode.SEATED
+	vehicle = van
+	velocity = Vector3.ZERO
+	sprinting = false
+	crouching = false
+	_collider.disabled = true
+	seat_look = 0.0
+	pitch = 0.0
+	_sat_frame = Engine.get_physics_frames()   # то же нажатие E не должно сразу высадить
+	seat_eye_local = van.to_local(seat.global_position) + Vector3.UP * feel.seat_eye_height
+	_tick_seated()
+
+
+## Выйти из машины рядом с дверью водителя (или где найдётся место).
+func leave_vehicle() -> void:
+	if mode != Mode.SEATED:
+		return
+	var van: Van = vehicle
+	var door: Vector3 = van.release_driver()
+	var side: Vector3 = (door - van.global_position).slide(Vector3.UP)
+	var spots: Array[Vector3] = [door, van.global_position - side, door + side.normalized() * 0.7,
+			van.global_position + Vector3.UP * 2.6]
+	var target: Vector3 = spots[spots.size() - 1]
+	for spot: Vector3 in spots:
+		var feet: Vector3 = _floor_under(spot + Vector3.UP * 1.2)
+		if _can_fit(feet, feel.stand_height):
+			target = feet
+			break
+	global_position = target
+	reset_physics_interpolation()
+	velocity = Vector3.ZERO
+	vehicle = null
+	_collider.disabled = false
+	mode = Mode.NORMAL
+
+
+func _tick_seated() -> void:
+	if not is_instance_valid(vehicle):
+		vehicle = null
+		_collider.disabled = false
+		mode = Mode.NORMAL
+		return
+	vehicle.throttle = _input.move.y
+	vehicle.steer = -_input.move.x      # вправо — к -X машины
+	vehicle.brake_input = 1.0 if _input.jump_held else 0.0
+	global_position = vehicle.to_global(seat_eye_local) - Vector3.UP * eye_height()
+	velocity = vehicle.linear_velocity
+	var ahead: Vector3 = vehicle.global_basis * (Basis(Vector3.UP, seat_look) * Vector3.BACK)
+	yaw = atan2(-ahead.x, -ahead.z)
+	if _input.interact_pressed and Engine.get_physics_frames() != _sat_frame:
+		leave_vehicle()
 
 
 # --- служебное ----------------------------------------------------------------

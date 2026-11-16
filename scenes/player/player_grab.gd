@@ -23,6 +23,9 @@ var focus: RigidBody3D
 ## Куча и её ячейка под прицелом (можно вытащить кусок), если focus пуст
 var focus_dump: Dump
 var focus_cell: Vector3i = Dump.NO_CELL
+## Машина под прицелом и что с ней можно сделать клавишей E ({} — ничего)
+var focus_van: Van
+var focus_action: Dictionary = {}
 ## Заряд броска 0..1
 var throw_charge: float = 0.0
 ## Насколько предмет отстал от точки удержания, м (для рук и «поводка»)
@@ -83,11 +86,15 @@ func tick(input: PlayerInput, delta: float) -> void:
 	if _player.mode != PlayerController.Mode.NORMAL:
 		release(false)
 		focus = null
+		focus_van = null
 		_update_highlight()
 		_was_grab_held = input.grab_held
 		return
 	_update_focus()
 	_update_highlight()
+	if input.interact_pressed and focus_van != null and not focus_action.is_empty():
+		focus_van.interact(_player, focus_action["action"])
+		return
 	_shovel_wait = maxf(_shovel_wait - delta, 0.0)
 	if held == null:
 		throw_charge = 0.0
@@ -160,6 +167,8 @@ func _update_focus() -> void:
 	focus = null
 	focus_dump = null
 	focus_cell = Dump.NO_CELL
+	focus_van = null
+	focus_action = {}
 	if held != null:
 		return
 	# Прицел «с допуском»: сначала точно по центру, потом четыре луча рядом —
@@ -174,6 +183,11 @@ func _update_focus() -> void:
 		q.to = from + dir * _feel.grab_reach
 		var hit: Dictionary = space.intersect_ray(q)
 		if hit.is_empty():
+			continue
+		if hit["collider"] is Van:
+			if focus_van == null and focus_dump == null:
+				focus_van = hit["collider"]
+				focus_action = focus_van.interaction_at(hit["position"])
 			continue
 		var body: RigidBody3D = hit["collider"] as RigidBody3D
 		if body != null and (not body.freeze or body.has_meta(&"dump_site") or body.has_meta(&"burying")):

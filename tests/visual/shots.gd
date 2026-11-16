@@ -22,7 +22,7 @@ func _ready() -> void:
 		elif arg.begins_with("--only="):
 			_only = arg.trim_prefix("--only=")
 	DirAccess.make_dir_recursive_absolute(_out)
-	var scene: Node = (load(DUMP_SCENE if _only == "dump" else PLAYGROUND) as PackedScene).instantiate()
+	var scene: Node = (load(DUMP_SCENE if _only == "dump" or _only == "van" else PLAYGROUND) as PackedScene).instantiate()
 	add_child(scene)
 	_player = scene.find_child("Player", true, false)
 	_player.scripted_input = _input
@@ -37,6 +37,10 @@ func _run() -> void:
 	await _wait(0.3)
 	if _only == "dump":
 		await _run_dump()
+		get_tree().quit()
+		return
+	if _only == "van":
+		await _run_van()
 		get_tree().quit()
 		return
 	if _want("stand"):
@@ -268,6 +272,86 @@ func _run_dump() -> void:
 	_player.pitch = 0.15
 	await _wait(0.3)
 	await _snap("flashlight")
+
+
+## Буханка: общий вид, кузов с грузом, подсказка у двери, вид из кабины, езда, перегруз.
+func _run_van() -> void:
+	var van: Van = find_child("Van", true, false)
+	var scene: Node = van.get_parent()
+	# разворачиваем носом вдоль кучи: впереди 45 м площадки
+	var turn: float = -PI * 0.5
+	van.global_transform = Transform3D(Basis(Vector3.UP, turn), van.global_position)
+	van.reset_physics_interpolation()
+	await _wait(1.0)
+	await _third_person(van.to_global(Vector3(2.6, 0.0, 3.6)), 0.6 + turn, Vector3(1.6, 0.9, 2.4))
+	_cam.global_position = van.to_global(Vector3(4.6, 1.7, 5.6))
+	_cam.look_at(van.to_global(Vector3(0, 0.9, 0)))
+	await _snap("van_front")
+	# кузов: двери открыты, внутри груз
+	van.toggle_doors()
+	var radiator: ItemData = load("res://data/items/radiator_cast_iron.tres")
+	var fridge: ItemData = load("res://data/items/fridge.tres")
+	var tv: ItemData = load("res://data/items/tv_crt.tres")
+	scene._spawn(fridge, Transform3D(van.global_basis, van.to_global(Vector3(-0.45, 1.0, 0.3))))
+	scene._spawn(radiator, Transform3D(van.global_basis * Basis(Vector3.RIGHT, PI * 0.5), van.to_global(Vector3(0.4, 0.9, -0.2))))
+	scene._spawn(radiator, Transform3D(van.global_basis * Basis(Vector3.RIGHT, PI * 0.5), van.to_global(Vector3(0.4, 0.9, -0.9))))
+	scene._spawn(tv, Transform3D(van.global_basis, van.to_global(Vector3(-0.4, 0.9, -1.1))))
+	await _place(van.to_global(Vector3(-1.9, 0.0, -4.2)), turn)
+	_player.yaw = PI + 0.5 + turn
+	await _wait(1.5)
+	_cam.global_position = van.to_global(Vector3(-2.6, 1.9, -5.4))
+	_cam.look_at(van.to_global(Vector3(0, 1.1, -1.2)))
+	await _snap("van_cargo")
+	# подсказка у задних дверей от первого лица
+	await _place(van.to_global(Vector3(0.2, 0.0, -4.4)), PI + turn)
+	_first_person()
+	_player.pitch = 0.1
+	await _wait(0.3)
+	await _snap("van_bay_first_person")
+	# подсказка у двери водителя
+	await _place(van.to_global(Vector3(2.5, 0.0, 1.5)), PI * 0.5 + turn)
+	_player.pitch = 0.1
+	await _wait(0.3)
+	await _snap("van_door_hint")
+	# сели за руль
+	await get_tree().physics_frame      # после снимка мы вне физического тика: выравниваемся
+	_input.interact_pressed = true
+	await get_tree().physics_frame
+	_input.interact_pressed = false
+	await _wait(0.5)
+	await _snap("van_cab")
+	van.toggle_doors()
+	_input.move = Vector2(0.0, 1.0)
+	await _wait(1.2)
+	await _snap("van_cab_driving")
+	_player.body.set_first_person(false)
+	_cam.make_current()
+	_cam.global_position = van.to_global(Vector3(-5.0, 1.6, 9.0))
+	await _wait(0.4)
+	_cam.look_at(van.global_position + Vector3(0, 1.0, 0.0))
+	await _snap("van_driving")
+	_input.move = Vector2(-1.0, 0.6)
+	await _wait(1.2)
+	_cam.global_position = van.global_position + van.global_basis * Vector3(-5.5, 1.8, 5.0)
+	_cam.look_at(van.global_position + Vector3(0, 1.0, 0.0))
+	await _snap("van_turning")
+	_input.move = Vector2.ZERO
+	_input.jump_held = true
+	await _wait(2.5)
+	_input.jump_held = false
+	# перегруз: ещё 14 батарей в кузов
+	for i: int in 14:
+		scene._spawn(radiator, Transform3D(van.global_basis * Basis(Vector3.RIGHT, PI * 0.5),
+				van.to_global(Vector3(-0.42 + 0.84 * (i % 2), 1.3 + 0.18 * (i / 2), -1.3 - 0.05 * (i / 2)))))
+	await _wait(3.0)
+	_cam.global_position = van.global_position + van.global_basis * Vector3(6.5, 1.1, -0.6)
+	_cam.look_at(van.global_position + Vector3(0, 0.9, 0.0))
+	await _snap("van_overloaded")
+	_first_person()
+	_player.pitch = -0.25
+	_player.seat_look = 0.5
+	await _wait(0.3)
+	await _snap("van_overloaded_hud")
 
 
 func _find_item(id: StringName) -> Item:

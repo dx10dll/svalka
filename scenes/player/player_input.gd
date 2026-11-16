@@ -17,3 +17,5 @@ var grab_held: bool = false
 var throw_held: bool = false
 ## Включить или выключить фонарь (клавиша F)
 var flashlight_pressed: bool = false
+## Действие с тем, на что смотрим: сесть за руль, открыть двери (клавиша E)
+var interact_pressed: bool = false

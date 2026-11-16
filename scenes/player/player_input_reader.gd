@@ -8,6 +8,7 @@ var _look: Vector2 = Vector2.ZERO
 var _jump_queued: bool = false
 var _flop_queued: bool = false
 var _flashlight_queued: bool = false
+var _interact_queued: bool = false
 ## Была ли мышь вообще: с геймпадом захват курсора не обязателен
 var _mouse_seen: bool = false
 
@@ -26,6 +27,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_flop_queued = true
 	elif event.is_action_pressed(&"flashlight"):
 		_flashlight_queued = true
+	elif event.is_action_pressed(&"interact"):
+		_interact_queued = true
 	elif event.is_action_pressed(&"pause"):
 		var captured: bool = Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
@@ -52,6 +55,7 @@ func sample() -> PlayerInput:
 	var input := PlayerInput.new()
 	if not enabled or DebugMenu.is_open():
 		_flashlight_queued = false
+		_interact_queued = false
 		_jump_queued = false
 		_flop_queued = false
 		return input
@@ -66,6 +70,8 @@ func sample() -> PlayerInput:
 	input.throw_held = captured and Input.is_action_pressed(&"throw")
 	input.flop_pressed = _flop_queued
 	input.flashlight_pressed = _flashlight_queued
+	input.interact_pressed = _interact_queued
+	_interact_queued = false
 	_flashlight_queued = false
 	_jump_queued = false
 	_flop_queued = false

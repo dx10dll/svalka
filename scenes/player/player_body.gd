@@ -102,7 +102,7 @@ func _process(delta: float) -> void:
 	_one_shot_left = maxf(_one_shot_left - delta, 0.0)
 	if _one_shot_left <= 0.0 and _player.mode == PlayerController.Mode.NORMAL:
 		_update_locomotion()
-	elif _player.mode == PlayerController.Mode.BURIED:
+	elif _player.mode == PlayerController.Mode.BURIED or _player.mode == PlayerController.Mode.SEATED:
 		_play(&"crouch_idle", 1.0)
 
 
