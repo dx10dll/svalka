@@ -155,6 +155,18 @@ func _run() -> void:
 		await _wait(0.2)
 		await _snap("first_person")
 		_input.move = Vector2.ZERO
+	if _want("tools"):
+		# инструменты в руке от первого лица
+		await _place(Vector3(0, 0.05, 2), 0.0)
+		_player.body.set_first_person(true)
+		_player.pitch = -0.15
+		(_player.get_node(^"Camera") as PlayerCamera).camera.make_current()
+		_player.belt.stow(1, ItemDb.spawn(ItemDb.tool(&"crowbar"), RandomNumberGenerator.new()))
+		_player.belt.stow(2, ItemDb.spawn(ItemDb.tool(&"metal_detector"), RandomNumberGenerator.new()))
+		for slot: int in 3:
+			_player.belt.select(slot)
+			await _wait(0.6)
+			await _snap("tool_%d" % slot)
 	get_tree().quit()
 
 

@@ -161,3 +161,6 @@ extends Resource
 @export var camera_height_max_lag: float = 0.55
 ## Приземления мягче этого камеру не качают, м/с
 @export var landing_dip_min_speed: float = 3.2
+## Где инструмент висит перед камерой (вправо, вниз, вперёд), м, и его наклон, рад
+@export var tool_view_offset: Vector3 = Vector3(0.3, -0.34, -0.55)
+@export var tool_view_tilt: float = 0.5

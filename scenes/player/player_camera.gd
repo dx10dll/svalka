@@ -23,6 +23,11 @@ var _fov_add: float = 0.0
 var _eye_height: float = 1.66
 var _has_ragdoll_view: bool = false
 var _smooth_y: float = 0.0
+var _tool_holder: Node3D
+var _tool_model: Node3D
+var _tool_id: StringName = &""
+var _tool_swing: float = 0.0
+var _tool_raise: float = 0.0
 var _height_ready: bool = false
 var _fall_target := Vector3.ZERO
 var _fall_pos := Vector3.ZERO
@@ -68,6 +73,13 @@ func setup(player: PlayerController) -> void:
 		_flashlight.visible = on
 		Audio.play_at(&"grab", global_position, -10.0, 1.6))
 	player.belt.changed.connect(_apply_headlamp)
+	# инструмент в руках: модель перед камерой справа внизу
+	_tool_holder = Node3D.new()
+	_tool_holder.name = "ToolInHand"
+	camera.add_child(_tool_holder)
+	player.belt.changed.connect(_update_tool_view)
+	player.grab.shoveled.connect(func(_piece: RigidBody3D) -> void: _tool_swing = 1.0)
+	_update_tool_view()
 	_apply_headlamp()
 	_eye_height = player.eye_height()
 	player.landed.connect(_on_landed)
@@ -168,6 +180,7 @@ func _process(delta: float) -> void:
 	global_position = pos
 	global_basis = basis_n
 
+	_animate_tool(delta, bob_x, bob_y)
 	var fov_target: float = _feel.sprint_fov_add if _player.sprinting else 0.0
 	_fov_add = lerpf(_fov_add, fov_target, 1.0 - exp(-6.0 * delta))
 	camera.fov = _feel.fov + _fov_add
@@ -211,3 +224,48 @@ func _set_outside_view(on: bool) -> void:
 		return
 	_outside = on
 	_player.body.set_first_person(not on)
+
+
+## Показать в руке то, что выбрано на поясе.
+func _update_tool_view() -> void:
+	var item: Item = _player.belt.active_item()
+	var id: StringName = item.data.id if item != null else &""
+	if id == _tool_id:
+		return
+	_tool_id = id
+	if _tool_model != null:
+		_tool_model.queue_free()
+		_tool_model = null
+	_tool_raise = 0.0          # новый инструмент поднимается снизу
+	if item == null:
+		return
+	_tool_model = item.data.model.instantiate()
+	for col: Node in _tool_model.find_children("col_*", "CollisionShape3D", true, false):
+		col.queue_free()
+	for mesh: Node in _tool_model.find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).layers = OWN_BODY_LAYER       # от своего фонаря тени не даёт
+	# модели инструментов вытянуты вдоль X: разворачиваем от себя
+	# модели вытянуты вдоль X, рабочий конец — в сторону -X: разворачиваем им от себя.
+	# Прибор смотрит катушкой в землю, остальное — концом вверх.
+	var tilt: float = -_feel.tool_view_tilt * 0.6 if id == &"metal_detector" else _feel.tool_view_tilt
+	_tool_model.basis = Basis(Vector3.UP, -PI * 0.5) * Basis(Vector3.BACK, -tilt)
+	# прибор длинный и с коробкой у ручки: держим дальше от лица и ниже
+	_tool_model.position = Vector3(0.0, -0.3, -0.6) if id == &"metal_detector" else Vector3.ZERO
+	_tool_holder.add_child(_tool_model)
+
+
+## Инструмент в руке покачивается от шага, поднимается при выборе и машет при копке.
+func _animate_tool(delta: float, bob_x: float, bob_y: float) -> void:
+	if _tool_holder == null:
+		return
+	var show: bool = _tool_model != null and _player.mode == PlayerController.Mode.NORMAL
+	_tool_holder.visible = show
+	if not show:
+		return
+	_tool_raise = move_toward(_tool_raise, 1.0, delta * 5.0)
+	_tool_swing = move_toward(_tool_swing, 0.0, delta * 3.5)
+	var swing: float = sin(_tool_swing * PI)             # туда и обратно за один взмах
+	var rest: Vector3 = _feel.tool_view_offset
+	_tool_holder.position = rest + Vector3(bob_x * 0.6, bob_y * 0.8 - (1.0 - _tool_raise) * 0.5, 0.0) \
+			+ Vector3(-0.12, -0.1, -0.22) * swing
+	_tool_holder.rotation = Vector3(-0.9 * swing, 0.35 * swing, 0.0)
