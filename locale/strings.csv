@@ -95,3 +95,17 @@ SHOP_TYRES_DESC,цепче и тянет сильнее,more grip and pull
 SHOP_SEARCHLIGHT,Прожектор на крышу,Roof searchlight
 SHOP_SEARCHLIGHT_DESC,светит далеко вперёд,lights far ahead
 HINT_GARAGE,"Гараж: на стене доска с нормой и лавка (E у ящика — купить) · E у ворот — ехать на свалку","Garage: the quota board and the shop are on the wall (E at a crate to buy) · E at the gate to drive to the dump"
+ITEM_CANS_BAG,Мешок алюминиевых банок,Bag of aluminium cans
+ITEM_CAR_BATTERY,Аккумулятор,Car battery
+ITEM_BATHTUB,Чугунная ванна,Cast iron bathtub
+ITEM_CAR_RADIATOR,Автомобильный радиатор,Car radiator
+ITEM_RADIO,Радиоприёмник,Valve radio
+ITEM_CAMERA,Фотоаппарат,Film camera
+YARD_LINE_1,Ну, давай глянем...,"Well, let's see..."
+YARD_LINE_2,Сойдёт. Следующий.,That'll do. Next.
+YARD_LINE_3,Где брали — не спрашиваю.,Not asking where you got it.
+YARD_LINE_4,Весы не врут. Я тоже.,The scale doesn't lie. Neither do I.
+YARD_LINE_5,Маловато будет.,Not much there.
+YARD_LINE_QUOTA,Норма есть. Хозяин будет доволен.,That's the quota. The Boss will be pleased.
+YARD_LINE_TRASH,Мусор не беру. Убери с весов.,I don't take trash. Get it off the scale.
+YARD_LINE_EMPTY,На весах пусто.,The scale is empty.

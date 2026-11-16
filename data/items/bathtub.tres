@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/items/bathtub.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"bathtub"
+name_key = "ITEM_BATHTUB"
+model = ExtResource("2")
+mass_min_kg = 110.0
+mass_max_kg = 110.0
+carriers = 3
+metal = 4
+unit_price = 0
+break_speed = 0.0
+break_loss = 0.0
+dump_cells = Vector3i(2, 2, 1)
+dump_rotation_deg = Vector3(0, 0, 0)
+impact_sound = &"metal_heavy"
+break_sound = &""

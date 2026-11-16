@@ -18,6 +18,14 @@ func _ready() -> void:
 		if data == null or data.model == null:
 			print("  ПРОВАЛ: у мусора нет модели")
 			failed += 1
+	var catalog: Array[ItemData] = ItemDb.all()
+	var broken_items: int = 0
+	for data: ItemData in catalog:
+		if data.model == null or data.mass_min_kg <= 0.0:
+			broken_items += 1
+	if catalog.size() < 12 or broken_items > 0:
+		print("  ПРОВАЛ: каталог вещей: %d штук, из них без модели %d" % [catalog.size(), broken_items])
+		failed += 1
 	var feel: VanFeel = load("res://data/van_feel.tres")
 	var player: PlayerFeel = load("res://data/player_feel.tres")
 	if feel == null or feel.capacity <= 0.0 or player == null:

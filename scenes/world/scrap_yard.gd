@@ -16,6 +16,10 @@ var run: RunState
 var _area: Area3D
 var _board: Label3D
 var _refresh: float = 0.0
+var _speech: Label3D
+var _speech_time: float = 0.0
+var _lamp: OmniLight3D
+var _flash: float = 0.0
 
 
 ## Окошко и колокол: то, на что игрок жмёт E.
@@ -56,6 +60,18 @@ func build(state: RunState) -> void:
 	light.omni_range = 9.0
 	light.position = Vector3(-2.4, 2.6, 0.0)
 	add_child(light)
+	_lamp = light
+	# реплики приёмщика: субтитр у окошка
+	_speech = Label3D.new()
+	_speech.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_speech.pixel_size = 0.004
+	_speech.font_size = 48
+	_speech.outline_size = 12
+	_speech.no_depth_test = true
+	_speech.modulate = Color(0.9, 0.95, 1.0)
+	_speech.position = Vector3(-2.6, 2.2, 0.6)
+	_speech.visible = false
+	add_child(_speech)
 	# окошко — сдать, колокол — закончить ночь
 	_desk(&"sell", Vector3(0.5, 0.5, 0.9), Vector3(-2.75, 1.25, 0.6), Color(0.2, 0.45, 0.22))
 	_desk(&"finish", Vector3(0.35, 0.35, 0.35), Vector3(-2.75, 1.25, -0.9), Color(0.7, 0.55, 0.12))
@@ -167,15 +183,37 @@ func sell() -> int:
 		item.queue_free()
 	if count == 0:
 		Audio.play_at(&"deny", global_position + Vector3.UP, -6.0)
+		say(tr("YARD_LINE_TRASH") if weigh()["trash"] > 0 else tr("YARD_LINE_EMPTY"))
 		return 0
+	var was_met: bool = run.quota_met()
 	run.sell(total)
 	Audio.play_at(&"cash", global_position + Vector3.UP, 0.0)
+	if run.quota_met() and not was_met:
+		# норма закрыта: зелёная вспышка и второй звон повыше
+		_flash = 1.0
+		Audio.play_at(&"cash", global_position + Vector3.UP * 2.0, 4.0, 1.5)
+		say(tr("YARD_LINE_QUOTA"))
+	else:
+		say(tr("YARD_LINE_%d" % (1 + randi() % 5)))
 	_update_board()
 	sold.emit(total, count)
 	return total
 
 
+## Реплика приёмщика на несколько секунд.
+func say(text: String) -> void:
+	_speech.text = "«%s»" % text
+	_speech.visible = true
+	_speech_time = 4.0
+
+
 func _process(delta: float) -> void:
+	_speech_time -= delta
+	if _speech_time <= 0.0:
+		_speech.visible = false
+	_flash = maxf(_flash - delta * 0.5, 0.0)
+	_lamp.light_color = Color(1.0, 0.82, 0.55).lerp(Color(0.4, 1.0, 0.4), _flash)
+	_lamp.light_energy = 3.0 + _flash * 14.0
 	_refresh -= delta
 	if _refresh <= 0.0 and run != null:
 		_refresh = 0.25

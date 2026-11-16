@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/items/camera.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"camera"
+name_key = "ITEM_CAMERA"
+model = ExtResource("2")
+mass_min_kg = 1.0
+mass_max_kg = 1.0
+carriers = 1
+metal = 6
+unit_price = 1200
+break_speed = 5.5
+break_loss = 0.8
+dump_cells = Vector3i(1, 1, 1)
+dump_rotation_deg = Vector3(0, 0, 0)
+impact_sound = &"plastic"
+break_sound = &"glass_break"
