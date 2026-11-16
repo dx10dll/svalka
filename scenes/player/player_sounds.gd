@@ -11,6 +11,11 @@ func setup(player: PlayerController) -> void:
 	player.footstep.connect(_on_footstep)
 	player.landed.connect(_on_landed)
 	player.knocked_down.connect(_on_knocked_down)
+	player.buried_started.connect(func() -> void:
+		Audio.play_at(&"body_fall", _feet(), 0.0, 0.8)
+		Audio.set_muffled(true))
+	player.buried_ended.connect(func(_survived: bool) -> void: Audio.set_muffled(false))
+	player.struggled.connect(func() -> void: Audio.play_at(&"soft", _feet() + Vector3.UP, -6.0, 0.8))
 
 
 func _feet() -> Vector3:

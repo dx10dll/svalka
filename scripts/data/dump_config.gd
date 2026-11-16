@@ -42,3 +42,12 @@ extends Resource
 @export var rest_speed: float = 0.12
 ## С какой скоростью куски вылетают из завала наружу, м/с
 @export var slide_speed: float = 3.2
+## Отвесная стенка выше стольких ячеек рядом с ямой оползает
+@export var cliff_cells: int = 4
+@export_group("Засыпанный игрок")
+## Завал от стольких кусков может засыпать игрока
+@export var bury_min_pieces: int = 4
+## Насколько близко к завалу надо стоять, чтобы засыпало, м
+@export var bury_radius: float = 2.3
+## Сколько кусков ложится на засыпанного
+@export var bury_pieces: int = 6

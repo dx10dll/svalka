@@ -33,6 +33,7 @@ JUNK_BOARDS,Доски,Boards
 JUNK_CONCRETE,Обломок бетона,Concrete chunk
 JUNK_BARREL,Бочка,Barrel
 JUNK_DIRT,Ком земли с хламом,Clod of dirt and junk
-HUD_DIG_HINT,ЛКМ — вытащить,LMB to pull out
+HUD_DIG_HINT,ЛКМ — вытащить · ПКМ — лопата,LMB to pull out · RMB to shovel
 SCENE_DUMP,Этап 3: куча,Stage 3: the heap
 HINT_DUMP,"ЛКМ по куче — вытащить кусок · F фонарь · вещи торчат из мусора · уберёшь опору — поедет завал · F1 отладка","LMB on the heap pulls a piece out · F flashlight · loot sticks out of the junk · remove a support and it slides · F1 debug"
+HUD_BURIED,"Завалило! Воздуха на %d с\nПробел — выбираться",Buried! Air for %d s\nSpace to struggle out

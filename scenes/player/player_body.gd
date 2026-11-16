@@ -102,6 +102,8 @@ func _process(delta: float) -> void:
 	_one_shot_left = maxf(_one_shot_left - delta, 0.0)
 	if _one_shot_left <= 0.0 and _player.mode == PlayerController.Mode.NORMAL:
 		_update_locomotion()
+	elif _player.mode == PlayerController.Mode.BURIED:
+		_play(&"crouch_idle", 1.0)
 
 
 ## Руки тянутся к предмету в руках: к его точкам хвата grip_*, а если до них

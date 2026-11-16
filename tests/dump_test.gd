@@ -60,11 +60,27 @@ func _run() -> void:
 	_check(column.x >= 0, "нашёлся столбик из %d кусков" % column.y)
 	a.remove_junk(Vector3i(column.x, 0, column.z))
 	var lost: Dictionary = a.find_unsupported([Vector3i(column.x, 0, column.z)])
-	_check((lost["junk"] as Array).size() == column.y - 1, "без нижнего падают все %d верхних" % (column.y - 1))
+	var fell: Array = lost["junk"]
+	var whole_column: bool = true
+	for y: int in range(1, column.y):
+		whole_column = whole_column and fell.has(Vector3i(column.x, y, column.z))
+	_check(whole_column, "без нижнего падают все %d верхних (и ещё %d с боков)" % [column.y - 1, fell.size() - column.y + 1])
 	var top_cell := Vector3i(column.x, column.y - 1, column.z)
 	a = DumpField.new(cfg, 7)
 	a.remove_junk(top_cell)
 	_check((a.find_unsupported([top_cell])["junk"] as Array).is_empty(), "сняли верхний — ничего не падает")
+
+	# 2б. склон: вырыли колодец на 5 ячеек — стенки оползают
+	a = DumpField.new(cfg, 7)
+	for k: int in 5:
+		a.remove_junk(Vector3i(column.x, column.y - 1 - k, column.z))
+	var slump: Dictionary = a.find_unsupported([Vector3i(column.x, column.y - 5, column.z)])
+	_check((slump["junk"] as Array).size() >= 1, "стенки колодца оползают: %d кусков" % (slump["junk"] as Array).size())
+	a = DumpField.new(cfg, 7)
+	a.remove_junk(top_cell)
+	a.remove_junk(top_cell + Vector3i.DOWN)
+	var small: int = (a.find_unsupported([top_cell + Vector3i.DOWN])["junk"] as Array).size()
+	_check(small <= 2, "ямка в 2 ячейки почти ничего не роняет (%d)" % small)
 
 	# 3. куча в мире
 	_dump = Dump.new()
@@ -97,7 +113,7 @@ func _run() -> void:
 	var warnings: Array[int] = []
 	_dump.collapse_warning.connect(func(_at: Vector3, n: int) -> void: warnings.append(n))
 	var pulled: Item = _dump.dig(low)
-	_check(warnings.size() == 1 and warnings[0] == above, "куча предупредила: поедет %d кусков" % above)
+	_check(warnings.size() == 1 and warnings[0] >= above, "куча предупредила: поедет %d кусков" % warnings[0])
 	_check(f.at(low + Vector3i.UP) > 0, "во время предупреждения всё ещё стоит")
 	pulled.queue_free()
 	await _wait(cfg.warning_time + 0.3)
@@ -106,8 +122,8 @@ func _run() -> void:
 
 	# 6. засыпание: тела легли и запеклись обратно
 	await _wait(9.0)
-	_check(_dump.awake.size() <= 1, "через 9 с живых тел осталось %d" % _dump.awake.size())
-	_check(f.solid_count() >= solid_before - 4, "куски вернулись в решётку: %d из %d" % [f.solid_count(), solid_before])
+	_check(_dump.awake.size() <= 4, "через 9 с живых тел осталось %d" % _dump.awake.size())
+	_check(f.solid_count() >= solid_before - 8, "куски вернулись в решётку: %d из %d" % [f.solid_count(), solid_before])
 
 	# 7. ценная вещь: забрали — место опустело
 	var site_item: Item = _dump._site_nodes.values()[0]
@@ -130,13 +146,58 @@ func _run() -> void:
 	await _wait(0.2)
 	_check(_player.grab.focus_dump == _dump or _player.grab.focus != null,
 			"куча или вещь под прицелом (z = %.1f)" % _player.global_position.z)
-	var awake_before: int = _dump.awake.size()
 	_input.grab_held = true
 	await _wait(0.8)
 	_check(_player.grab.held != null, "кусок кучи в руках")
-	_check(_dump.awake.size() == awake_before + 1 or (_player.grab.held != null and not (_player.grab.held as Item).data.is_trash()),
+	_check(_player.grab.held != null and _player.grab.held.get_parent() == _dump and not _player.grab.held.freeze,
 			"вытащенный кусок стал живым телом")
 	_input.grab_held = false
+	await _wait(0.3)
+
+	# 8б. лопата: ПКМ по куче отбрасывает куски, руки остаются пустыми
+	await _wait(4.0)   # вытащенный кусок улёгся и снова стал частью кучи
+	_check(_player.grab.focus_dump == _dump, "перед лопатой под прицелом снова куча")
+	var tossed: Array[RigidBody3D] = []
+	_player.grab.shoveled.connect(func(p: RigidBody3D) -> void: tossed.append(p))
+	_input.throw_held = true
+	await _wait(2.0)
+	_input.throw_held = false
+	var found_loot: bool = _player.grab.focus is Item and not (_player.grab.focus as Item).data.is_trash()
+	_check((tossed.size() >= 2 or found_loot) and tossed.size() >= 1 and _player.grab.held == null,
+			"лопатой за 2 секунды отброшено %d кусков%s" % [tossed.size(), ", докопались до вещи" if found_loot else ""])
+
+	# 8в. засыпанный игрок: выбирается рывками
+	var pile: Array[RigidBody3D] = []
+	for k: int in 2:
+		var piece_b: Item = _dump._spawn_junk(0, Transform3D(Basis.IDENTITY, _player.global_position + Vector3(0.3 * k, 0.6, 0)))
+		piece_b.freeze = true
+		piece_b.set_meta(&"burying", true)
+		pile.append(piece_b)
+	var ended: Array[bool] = []
+	_player.buried_ended.connect(func(ok: bool) -> void: ended.append(ok))
+	_player.bury(pile)
+	var buried_at: Vector3 = _player.global_position
+	_input.move = Vector2(0, 1)
+	await _wait(1.0)
+	_check(_player.mode == PlayerController.Mode.BURIED and _player.global_position.distance_to(buried_at) < 0.05,
+			"под завалом не уйти")
+	_check(_player.air_left < _player.feel.buried_air - 0.9, "воздух уходит: %.1f с" % _player.air_left)
+	_input.move = Vector2.ZERO
+	for k: int in _player.feel.buried_struggle_presses * 2:
+		_input.jump_pressed = true
+		await get_tree().physics_frame
+		_input.jump_pressed = false
+		await get_tree().physics_frame
+	await _wait(0.1)
+	_check(_player.mode == PlayerController.Mode.NORMAL and ended == [true], "выбрался сам за %d рывков" % (_player.feel.buried_struggle_presses * 2))
+	# не выбрался: воздух кончился
+	var one: Item = _dump._spawn_junk(0, Transform3D(Basis.IDENTITY, _player.global_position + Vector3(0, 0.6, 0)))
+	one.freeze = true
+	_player.bury([one] as Array[RigidBody3D])
+	_player.air_left = 0.2
+	await _wait(0.5)
+	_check(ended == [true, false] and _player.mode == PlayerController.Mode.NORMAL, "без воздуха — возврат на старт")
+	_check(_player.global_position.distance_to(Vector3(0, 0.05, cfg.radius + 1.0)) < 1.0, "игрок снова на старте")
 	await _wait(0.3)
 
 	# 9. по куче можно зайти наверх пешком

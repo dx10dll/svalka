@@ -16,8 +16,14 @@ signal getup_started(duration: float)
 signal got_up
 signal footstep(speed: float)
 signal flashlight_toggled(on: bool)
+## Игрока засыпало завалом
+signal buried_started
+## Рывок под завалом (для звука и дрожи камеры)
+signal struggled
+## Выбрался (survived) или задохнулся
+signal buried_ended(survived: bool)
 
-enum Mode { NORMAL, MANTLE, DOWNED }
+enum Mode { NORMAL, MANTLE, DOWNED, BURIED }
 
 const FEEL_PATH: String = "res://data/player_feel.tres"
 
@@ -39,6 +45,11 @@ var stride_phase: float = 0.0
 var step_visual_offset: float = 0.0
 ## 0..1 — прогресс залезания или лежания
 var mode_progress: float = 0.0
+
+## Сколько воздуха осталось под завалом, с
+var air_left: float = 0.0
+## Куски, которые лежат на засыпанном игроке (их надо убрать, чтобы выбраться)
+var burying: Array[RigidBody3D] = []
 
 ## Если задан, ввод берётся отсюда, а не с клавиатуры (автотесты, позже — сеть и боты)
 var scripted_input: PlayerInput = null
@@ -64,6 +75,8 @@ var _mode_time: float = 0.0
 var _last_step_index: int = 0
 var _mantle_cooldown: float = 0.0
 var _getting_up: bool = false
+var _struggle: int = 0
+var _buried_total: int = 0
 
 
 func _ready() -> void:
@@ -79,6 +92,7 @@ func _ready() -> void:
 	floor_max_angle = deg_to_rad(feel.floor_max_angle_deg)
 	floor_snap_length = 0.25
 	_spawn_point = global_position
+	add_to_group(&"players")
 	yaw = rotation.y
 	rotation = Vector3.ZERO  # тело не вращаем, поворот хранится в yaw
 	_reader = PlayerInputReader.new()
@@ -129,6 +143,8 @@ func _physics_process(delta: float) -> void:
 			_tick_mantle(delta)
 		Mode.DOWNED:
 			_tick_downed(delta)
+		Mode.BURIED:
+			_tick_buried(delta)
 	if global_position.y < -30.0:
 		respawn()
 
@@ -489,6 +505,67 @@ func downed_amount() -> float:
 	if _mode_time < feel.knockdown_time:
 		return clampf(_mode_time / 0.18, 0.0, 1.0)
 	return 1.0 - smoothstep(0.0, 1.0, (_mode_time - feel.knockdown_time) / feel.getup_time)
+
+
+# --- под завалом --------------------------------------------------------------
+
+## Засыпать игрока: pieces — замороженные куски, лежащие на нём.
+## Отдельное состояние, а не «тела сверху»: так надёжнее и дешевле для сети.
+func bury(pieces: Array[RigidBody3D]) -> void:
+	if mode != Mode.NORMAL and mode != Mode.MANTLE:
+		return
+	if Game.debug_flag(&"god_mode") or pieces.is_empty():
+		return
+	grab.release(false)
+	mode = Mode.BURIED
+	velocity = Vector3.ZERO
+	sprinting = false
+	air_left = feel.buried_air
+	burying = pieces
+	_buried_total = pieces.size()
+	_struggle = 0
+	buried_started.emit()
+
+
+## 0 — засыпан полностью, 1 — почти откопан.
+func dug_out_amount() -> float:
+	if mode != Mode.BURIED or _buried_total == 0:
+		return 1.0
+	return 1.0 - float(burying.size()) / float(_buried_total)
+
+
+func _tick_buried(delta: float) -> void:
+	velocity = Vector3.ZERO
+	air_left -= delta
+	# кусок убрали товарищи (взяли в руки — он оттаял) или он исчез
+	for i: int in range(burying.size() - 1, -1, -1):
+		if not is_instance_valid(burying[i]) or not burying[i].freeze:
+			burying.remove_at(i)
+	# сам: рывками сталкиваем куски по одному
+	if _input.jump_pressed and not burying.is_empty():
+		_struggle += 1
+		struggled.emit()
+		if _struggle >= feel.buried_struggle_presses:
+			_struggle = 0
+			_shove_off(burying.pop_back())
+	if burying.is_empty():
+		mode = Mode.NORMAL
+		buried_ended.emit(true)
+	elif air_left <= 0.0:
+		for piece: RigidBody3D in burying:
+			if is_instance_valid(piece):
+				_shove_off(piece)
+		burying.clear()
+		respawn()
+		buried_ended.emit(false)
+
+
+func _shove_off(piece: RigidBody3D) -> void:
+	piece.remove_meta(&"burying")
+	piece.freeze = false
+	piece.sleeping = false
+	var away := Vector3(randf_range(-1.0, 1.0), 1.6, randf_range(-1.0, 1.0))
+	piece.apply_central_impulse(away * piece.mass * 1.8)
 
 
 # --- служебное ----------------------------------------------------------------

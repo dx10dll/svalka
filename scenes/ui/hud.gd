@@ -7,6 +7,10 @@ var _grab: PlayerGrab
 var _dot: ColorRect
 var _info: Label
 var _charge: ProgressBar
+var _player: PlayerController
+var _buried: ColorRect
+var _buried_material: ShaderMaterial
+var _struggle_shake: float = 0.0
 
 
 func setup(grab: PlayerGrab) -> void:
@@ -16,6 +20,19 @@ func setup(grab: PlayerGrab) -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+
+	# вид из-под завала: темнота со щелями, поверх мира и под надписями
+	_player = grab.get_parent() as PlayerController
+	_buried = ColorRect.new()
+	_buried.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_buried.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_buried_material = ShaderMaterial.new()
+	_buried_material.shader = load("res://assets/shaders/buried.gdshader")
+	_buried.material = _buried_material
+	_buried.visible = false
+	root.add_child(_buried)
+	if _player != null:
+		_player.struggled.connect(func() -> void: _struggle_shake = 1.0)
 
 	_dot = ColorRect.new()
 	_dot.size = Vector2(4, 4)
@@ -49,9 +66,20 @@ func setup(grab: PlayerGrab) -> void:
 	root.add_child(_charge)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _grab == null:
 		return
+	if _player != null and _player.mode == PlayerController.Mode.BURIED:
+		_struggle_shake = maxf(_struggle_shake - delta * 3.0, 0.0)
+		_buried.visible = true
+		_buried_material.set_shader_parameter(&"open", _player.dug_out_amount())
+		_buried_material.set_shader_parameter(&"shake", _struggle_shake)
+		_dot.visible = false
+		_charge.visible = false
+		_info.text = tr("HUD_BURIED") % int(ceil(_player.air_left))
+		return
+	_buried.visible = false
+	_dot.visible = true
 	var target: RigidBody3D = _grab.held if _grab.held != null else _grab.focus
 	_dot.color = Color(1.0, 0.75, 0.35) if target != null or _grab.focus_dump != null else Color(1, 1, 1, 0.55)
 	if target != null and is_instance_valid(target):

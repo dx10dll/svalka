@@ -118,3 +118,13 @@ extends Resource
 @export var flashlight_range: float = 22.0
 ## Половина угла луча, градусы
 @export var flashlight_angle_deg: float = 26.0
+@export_group("Лопата")
+## Пауза между взмахами лопаты, с
+@export var shovel_cooldown: float = 0.42
+## С какой скоростью мусор летит с лопаты, м/с
+@export var shovel_throw_speed: float = 5.5
+@export_group("Под завалом")
+## Запас воздуха под завалом, с
+@export var buried_air: float = 60.0
+## Сколько рывков (нажатий прыжка) нужно, чтобы столкнуть с себя один кусок
+@export var buried_struggle_presses: int = 8

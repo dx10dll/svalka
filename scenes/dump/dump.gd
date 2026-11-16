@@ -285,6 +285,7 @@ func _collapse(p: Dictionary) -> void:
 	var outward := Vector3(center.x, 0.0, center.z)
 	outward = outward.normalized() if outward.length() > 0.5 else Vector3.ZERO
 	var crumbled: int = 0
+	var spawned: Array[Item] = []
 	for w: Array in waking:
 		if awake.size() >= config.max_awake:
 			crumbled += 1   # лимит живых тел: остальное просто рассыпается в труху
@@ -294,6 +295,8 @@ func _collapse(p: Dictionary) -> void:
 		body.linear_velocity = outward * _rng.randf_range(config.slide_speed * 0.5, config.slide_speed) \
 				+ Vector3(_rng.randf_range(-0.6, 0.6), _rng.randf_range(0.3, 1.6), _rng.randf_range(-0.6, 0.6))
 		body.angular_velocity = Vector3(_rng.randf_range(-1.5, 1.5), _rng.randf_range(-1.0, 1.0), _rng.randf_range(-1.5, 1.5))
+		spawned.append(body)
+	_bury_players(center, spawned)
 	for item: Item in freed:
 		item.freeze = false
 		item.sleeping = false
@@ -306,6 +309,42 @@ func _collapse(p: Dictionary) -> void:
 	collapsed.emit(to_global(center), pieces)
 	# то, что осталось висеть над опустевшим, проверяем ещё раз
 	_check_support(emptied)
+
+
+## Завал накрыл игрока: несколько кусков ложатся на него и замирают,
+## пока их не снимут товарищи или он сам не выберется.
+func _bury_players(center: Vector3, spawned: Array[Item]) -> void:
+	if spawned.size() < config.bury_min_pieces:
+		return
+	for node: Node in get_tree().get_nodes_in_group(&"players"):
+		var player: PlayerController = node as PlayerController
+		if player == null or player.mode != PlayerController.Mode.NORMAL:
+			continue
+		var p: Vector3 = to_local(player.global_position)
+		if Vector2(p.x - center.x, p.z - center.z).length() > config.bury_radius or p.y > center.y + 0.3:
+			continue
+		spawned.sort_custom(func(a: Item, b: Item) -> bool:
+			return a.position.distance_squared_to(p) < b.position.distance_squared_to(p))
+		var pieces: Array[RigidBody3D] = []
+		var n: int = mini(config.bury_pieces, spawned.size())
+		for i: int in n:
+			var piece: Item = spawned[i]
+			# кольцом вокруг груди и горкой над головой
+			var angle: float = TAU * i / float(n) + _rng.randf_range(-0.3, 0.3)
+			var ring: float = 0.42 if i < 4 else 0.15
+			var lift: float = _rng.randf_range(0.35, 0.6) if i < 4 else 0.95 + 0.25 * (i - 4)
+			piece.position = p + Vector3(cos(angle) * ring, lift, sin(angle) * ring)
+			piece.rotation = Vector3(_rng.randf_range(-0.6, 0.6), _rng.randf_range(0.0, TAU), _rng.randf_range(-0.6, 0.6))
+			piece.linear_velocity = Vector3.ZERO
+			piece.angular_velocity = Vector3.ZERO
+			piece.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+			piece.freeze = true
+			piece.set_meta(&"burying", true)
+			piece.add_collision_exception_with(player)
+			piece.reset_physics_interpolation()
+			pieces.append(piece)
+		player.bury(pieces)
+		return   # одним завалом засыпает одного: куски второй раз не делим
 
 
 ## Мелочь и пыль: частицы без коллизий.
@@ -348,6 +387,8 @@ func _update_resting(delta: float) -> void:
 		if not is_instance_valid(item):
 			awake.remove_at(i)
 			continue
+		if item.has_meta(&"burying"):
+			continue   # лежит на засыпанном игроке
 		var id: int = item.get_instance_id()
 		# в руках у игрока тело не засыпает (PlayerGrab выключает can_sleep)
 		var still: bool = item.can_sleep and item.linear_velocity.length() < config.rest_speed \

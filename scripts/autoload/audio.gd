@@ -23,6 +23,7 @@ var _pool: Array[AudioStreamPlayer3D] = []
 var _next_voice: int = 0
 var _last_time: Dictionary[StringName, float] = {}
 var _rng := RandomNumberGenerator.new()
+var _muffle_index: int = -1
 
 
 func _ready() -> void:
@@ -42,6 +43,17 @@ func _ready() -> void:
 		voice.attenuation_filter_cutoff_hz = 9000.0
 		add_child(voice)
 		_pool.append(voice)
+
+
+## Приглушить весь звук (игрок под завалом): срез верхов на общей шине.
+func set_muffled(on: bool) -> void:
+	if _muffle_index < 0:
+		var lowpass := AudioEffectLowPassFilter.new()
+		lowpass.cutoff_hz = 420.0
+		lowpass.resonance = 0.7
+		AudioServer.add_bus_effect(0, lowpass)
+		_muffle_index = AudioServer.get_bus_effect_count(0) - 1
+	AudioServer.set_bus_effect_enabled(0, _muffle_index, on)
 
 
 func has_sound(id: StringName) -> bool:

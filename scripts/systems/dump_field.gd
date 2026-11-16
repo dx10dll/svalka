@@ -302,7 +302,37 @@ func find_unsupported(emptied: Array[Vector3i]) -> Dictionary:
 		for ci: int in site["cells"]:
 			falling[ci] = true
 			queue.append(coords_of(ci) + Vector3i.UP)
+	# склон: рядом с ямой не устоит отвесная стенка выше cliff_cells ячеек —
+	# её верхний кусок съезжает. Так подкопанный склон оползает волна за волной.
+	var sources: Array[Vector3i] = emptied.duplicate()
+	sources.append_array(junk_out)
+	for e: Vector3i in sources:
+		for d: Vector3i in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+			for y: int in range(e.y + config.cliff_cells - 1, mini(e.y + config.cliff_cells + 8, size.y)):
+				var c := Vector3i(e.x - d.x, y, e.z - d.z)
+				if not in_bounds(c):
+					break
+				var i: int = index_of(c)
+				if cells[i] <= 0 or falling.has(i):
+					continue
+				var up: Vector3i = c + Vector3i.UP
+				if in_bounds(up) and cells[index_of(up)] != EMPTY and not falling.has(index_of(up)):
+					continue   # съезжает только верхний кусок стенки
+				if _is_cliff(c, d, falling):
+					falling[i] = true
+					junk_out.append(c)
 	return {"junk": junk_out, "sites": sites_out}
+
+
+## Обрыв ли рядом с ячейкой c в сторону d: пусто на cliff_cells ячеек вниз.
+func _is_cliff(c: Vector3i, d: Vector3i, falling: Dictionary[int, bool]) -> bool:
+	for k: int in config.cliff_cells:
+		var n: Vector3i = c + d + Vector3i.DOWN * k
+		if n.y < 0 or not in_bounds(n):
+			return false
+		if cells[index_of(n)] != EMPTY and not falling.has(index_of(n)):
+			return false
+	return true
 
 
 ## Сколько ячеек занято (для тестов и отладки).

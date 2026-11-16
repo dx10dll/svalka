@@ -39,6 +39,8 @@ func setup(player: PlayerController) -> void:
 	add_child(camera)
 	camera.make_current()
 	add_to_group(&"player_cameras")
+	player.struggled.connect(func() -> void: _shake = maxf(_shake, 0.45))
+	player.buried_started.connect(func() -> void: _shake = 1.0)
 	# фонарь: узкий тёплый луч чуть ниже и правее глаз, чтобы тени читались
 	_flashlight = SpotLight3D.new()
 	_flashlight.light_color = Color(1.0, 0.93, 0.78)

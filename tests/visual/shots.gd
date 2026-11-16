@@ -238,6 +238,30 @@ func _run_dump() -> void:
 		nearest.set_highlight(true)
 		await _wait(0.2)
 		await _snap("loot_in_heap")
+	# засыпанный игрок: вид со стороны и изнутри
+	await _third_person(Vector3(2.0, 0.05, r + 0.3), 0.0, Vector3(2.2, 1.3, 2.6))
+	var heap: Array[Item] = []
+	for k: int in 6:
+		heap.append(dump._spawn_junk(k % 6, Transform3D(Basis.IDENTITY, _player.global_position + Vector3(0, 1.0, -0.5))))
+	dump._bury_players(dump.to_local(_player.global_position) + Vector3(0, 0.5, -0.5), heap)
+	await _wait(0.4)
+	_look_at_player()
+	await _snap("buried_outside")
+	_first_person()
+	await _wait(0.3)
+	await _snap("buried_inside")
+	for k: int in _player.feel.buried_struggle_presses * 4:
+		_input.jump_pressed = true
+		await get_tree().physics_frame
+		_input.jump_pressed = false
+		await get_tree().physics_frame
+	await _snap("buried_half_out")
+	for k: int in _player.feel.buried_struggle_presses * 2:
+		_input.jump_pressed = true
+		await get_tree().physics_frame
+		_input.jump_pressed = false
+		await get_tree().physics_frame
+	await _wait(0.5)
 	# тёмная сторона кучи с фонарём
 	await _place(Vector3(0.0, 0.05, -r - 1.2), PI)
 	_first_person()

@@ -9,6 +9,7 @@ extends Node
 
 signal grabbed(body: RigidBody3D)
 signal released(body: RigidBody3D, thrown: bool)
+signal shoveled(piece: RigidBody3D)
 
 ## Лучи прицела: центр и небольшой разброс (тангенсы углов, около 6°)
 const AIM_SPREAD: Array[Vector2] = [
@@ -37,6 +38,8 @@ var _overstretch_time: float = 0.0
 var _saved_can_sleep: bool = true
 var _outlined: Item
 var _dump_point := Vector3.ZERO
+var _shovel_wait: float = 0.0
+var _shovel_side: float = 1.0
 
 
 func setup(player: PlayerController) -> void:
@@ -85,12 +88,21 @@ func tick(input: PlayerInput, delta: float) -> void:
 		return
 	_update_focus()
 	_update_highlight()
+	_shovel_wait = maxf(_shovel_wait - delta, 0.0)
 	if held == null:
 		throw_charge = 0.0
+		if input.throw_held and _shovel_wait <= 0.0:
+			if focus_dump != null:
+				_shovel(focus_dump.dig(focus_cell))
+			elif focus is Item and (focus as Item).data.is_trash() and not focus.freeze:
+				_shovel(focus as Item)   # лежащий мусор тоже отбрасываем
 		if input.grab_held and not _was_grab_held:
 			if focus != null:
 				if focus.has_meta(&"dump_site"):
 					(focus.get_parent() as Dump).release_site(focus as Item)
+				elif focus.has_meta(&"burying"):
+					focus.remove_meta(&"burying")   # сняли кусок с засыпанного товарища
+					focus.freeze = false
 				_grab(focus)
 			elif focus_dump != null:
 				var piece: Item = focus_dump.dig(focus_cell)
@@ -119,6 +131,31 @@ func _update_highlight() -> void:
 		_outlined.set_highlight(true)
 
 
+## Взмах лопатой: кусок кучи вылетает вбок и за спину. Стороны чередуются.
+func _shovel(piece: Item) -> void:
+	if piece == null:
+		return
+	_shovel_wait = _feel.shovel_cooldown
+	_shovel_side = -_shovel_side
+	var flat: Vector3 = Basis(Vector3.UP, _player.yaw) * Vector3.FORWARD
+	var right: Vector3 = Basis(Vector3.UP, _player.yaw) * Vector3.RIGHT
+	var dir: Vector3 = (right * _shovel_side * 0.9 - flat * 0.45 + Vector3.UP * 0.9).normalized()
+	# тяжёлое с лопаты летит хуже
+	var speed: float = _feel.shovel_throw_speed * minf(1.0, sqrt(14.0 / piece.mass))
+	piece.add_collision_exception_with(_player)
+	var piece_id: int = piece.get_instance_id()
+	get_tree().create_timer(0.5, false, true).timeout.connect(func() -> void:
+		var later: RigidBody3D = instance_from_id(piece_id) as RigidBody3D
+		if later != null and later != held:
+			later.remove_collision_exception_with(_player))
+	piece.linear_velocity = dir * speed
+	piece.angular_velocity = Vector3(randf_range(-4, 4), randf_range(-2, 2), randf_range(-4, 4))
+	Audio.play_at(&"whoosh", eye(), -9.0, 0.8)
+	Audio.play_impact(&"soft", _dump_point, 4.0)
+	get_tree().call_group(&"player_cameras", &"shake_from", eye(), 0.22)
+	shoveled.emit(piece)
+
+
 func _update_focus() -> void:
 	focus = null
 	focus_dump = null
@@ -139,7 +176,7 @@ func _update_focus() -> void:
 		if hit.is_empty():
 			continue
 		var body: RigidBody3D = hit["collider"] as RigidBody3D
-		if body != null and (not body.freeze or body.has_meta(&"dump_site")):
+		if body != null and (not body.freeze or body.has_meta(&"dump_site") or body.has_meta(&"burying")):
 			focus = body
 			focus.set_meta(&"aim_point", hit["position"])
 			focus_dump = null
