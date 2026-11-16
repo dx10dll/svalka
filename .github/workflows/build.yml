@@ -43,6 +43,11 @@ jobs:
           godot --headless --path . --fixed-fps 60 res://tests/dump_test.tscn
           godot --headless --path . --fixed-fps 60 res://tests/van_test.tscn
 
+      - name: Проверка упакованной игры
+        run: |
+          godot --headless --path . --export-pack "Windows Desktop" /tmp/check.pck
+          cd /tmp && godot --headless --main-pack check.pck res://scenes/debug/export_check.tscn
+
       - name: Экспорт Windows
         run: |
           set -e

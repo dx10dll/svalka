@@ -21,17 +21,17 @@ extends Resource
 @export_group("Состав")
 ## Куски мусора и их доли у поверхности и в глубине (глубже deep_depth метров)
 @export var junk: Array[ItemData] = []
-@export var junk_weight_top: PackedFloat32Array = []
-@export var junk_weight_deep: PackedFloat32Array = []
+@export var junk_weight_top: PackedFloat32Array = PackedFloat32Array()
+@export var junk_weight_deep: PackedFloat32Array = PackedFloat32Array()
 @export var deep_depth: float = 3.0
 ## Нижний, «советский» слой: ниже этой высоты над землёй в глубине кучи идут свои доли (пусто — слоя нет)
 @export var bottom_height: float = 0.0
-@export var junk_weight_bottom: PackedFloat32Array = []
-@export var loot_weight_bottom: PackedFloat32Array = []
+@export var junk_weight_bottom: PackedFloat32Array = PackedFloat32Array()
+@export var loot_weight_bottom: PackedFloat32Array = PackedFloat32Array()
 ## Ценные вещи и их доли у поверхности и в глубине
 @export var loot: Array[ItemData] = []
-@export var loot_weight_top: PackedFloat32Array = []
-@export var loot_weight_deep: PackedFloat32Array = []
+@export var loot_weight_top: PackedFloat32Array = PackedFloat32Array()
+@export var loot_weight_deep: PackedFloat32Array = PackedFloat32Array()
 ## Шанс, что в ячейке лежит ценная вещь: у поверхности и в глубине
 @export var loot_chance_top: float = 0.006
 @export var loot_chance_deep: float = 0.016
