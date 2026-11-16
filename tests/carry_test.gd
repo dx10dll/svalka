@@ -154,6 +154,85 @@ func _run() -> void:
 	_check(samovar.value() >= samovar.scrap_value(), "помятый самовар не дешевле лома")
 	_check(Audio.played_count > sounds_before, "удары и шаги звучат (%d звуков)" % (Audio.played_count - sounds_before))
 
+	# 7. мешок банок рвётся от удара
+	var items_before: int = get_tree().get_nodes_in_group(&"items").size()
+	var bag: Item = _spawn("cans_bag", Vector3(-20, 3.2, 20))
+	await _wait(0.2)
+	var bag_mass: float = bag.mass
+	_check(not bag.spilled, "мешок банок пока цел")
+	bag.linear_velocity = Vector3.DOWN * 9.0
+	await _wait(1.5)
+	var cans: Array[Item] = []
+	for node: Node in get_tree().get_nodes_in_group(&"items"):
+		if (node as Item).data.id == &"can":
+			cans.append(node as Item)
+	var cans_mass: float = 0.0
+	for can: Item in cans:
+		cans_mass += can.mass
+	_check(bag.spilled and cans.size() == 10, "мешок порвался, высыпалось банок: %d" % cans.size())
+	_check(absf(bag.mass + cans_mass - bag_mass) < 0.01 and bag.mass < bag_mass * 0.5,
+			"вес не пропал: в мешке %.1f кг, в банках %.1f кг" % [bag.mass, cans_mass])
+	_check(cans[0].value() > 0 and bag.value() < Quota.scrap_value(Game.economy, bag.data.metal, bag_mass), "банки стоят денег, мешок подешевел")
+	bag.linear_velocity = Vector3.UP * 4.0
+	await _wait(1.5)
+	_check(get_tree().get_nodes_in_group(&"items").size() == items_before + 11, "второй раз мешок не рвётся")
+
+	# 8. аккумулятор набок — кислота, руки бросают
+	var battery: Item = _spawn("car_battery", Vector3(-20, 0.02, 38.9))
+	await _place(Vector3(-20, 0.05, 40))
+	_check(not battery.leaking, "аккумулятор стоит ровно — не течёт")
+	_aim_at(battery)
+	await _wait(0.2)
+	_input.grab_held = true
+	await _wait(0.6)
+	_check(_player.grab.held == battery, "взяли аккумулятор")
+	await _wait(1.0)
+	_check(_player.grab.held == battery and not battery.leaking, "несём — болтается, но не течёт")
+	var tipped: Basis = Basis(Vector3.FORWARD, PI * 0.6)
+	for i: int in 60:
+		battery.global_basis = tipped     # болтаем вверх дном целую секунду
+		await get_tree().physics_frame
+	await _wait(0.1)
+	_check(_player.grab.held == null and _player.grab.burn_wait > 0.0,
+			"перевернули — потекло, руки разжались")
+	_input.grab_held = false
+	await _wait(0.1)
+
+	# 9. ванна-санки
+	var tub: Item = _spawn("bathtub", Vector3(20, 0.05, 38.0))
+	await _place(Vector3(20, 0.05, 40))
+	_aim_at(tub)
+	await _wait(0.3)
+	_check(_player.grab.focus == tub and _player.grab.focus_action.get("action") == &"ride", "у ванны подсказка «сесть»")
+	var tub_mass: float = tub.mass
+	_input.interact_pressed = true
+	await get_tree().physics_frame
+	_input.interact_pressed = false
+	await _wait(0.3)
+	_check(_player.mode == PlayerController.Mode.SEATED and _player.ride == tub and tub.rider == _player, "сели в ванну")
+	_check(is_equal_approx(tub.mass, tub_mass + _player.feel.body_mass), "ванна потяжелела на седока: %.0f кг" % tub.mass)
+	var tub_from: Vector3 = tub.global_position
+	_input.move = Vector2(0.0, 1.0)
+	await _wait(2.0)
+	_input.move = Vector2.ZERO
+	var slid: Vector3 = tub.global_position - tub_from
+	_check(slid.length() > 0.8 and slid.normalized().dot(tub.global_basis.x) > 0.8, "оттолкнулись — проехали %.1f м вперёд" % slid.length())
+	_check(_player.global_position.distance_to(tub.global_position) < 1.0, "седок едет вместе с ванной")
+	_check(tub.linear_velocity.length() <= tub.data.ride_push_max_speed + 0.5, "на ровном не разогнаться (%.1f м/с)" % tub.linear_velocity.length())
+	_input.interact_pressed = true
+	await get_tree().physics_frame
+	_input.interact_pressed = false
+	await _wait(0.5)
+	_check(_player.mode == PlayerController.Mode.NORMAL and tub.rider == null and is_equal_approx(tub.mass, tub_mass),
+			"вылезли, ванна снова весит %.0f кг" % tub.mass)
+	_check(_player.global_position.distance_to(tub.global_position) < 4.0 and _player.global_position.y > -0.1, "стоим рядом с ванной (%s, ванна %s)" % [_player.global_position, tub.global_position])
+	# перевёрнутая ванна выбрасывает
+	_player.sit_on(tub)
+	await _wait(0.2)
+	tub.global_basis = Basis(Vector3.RIGHT, PI * 0.8) * tub.global_basis
+	await _wait(0.3)
+	_check(_player.mode == PlayerController.Mode.DOWNED and tub.rider == null, "ванна перевернулась — седок вылетел и упал")
+
 	# 6. формат денег
 	_check(Fmt.rub(-1200) == "−1 200 ₽", "формат суммы: " + Fmt.rub(-1200))
 	_check(Fmt.rub(23000) == "23 000 ₽", "формат суммы: " + Fmt.rub(23000))

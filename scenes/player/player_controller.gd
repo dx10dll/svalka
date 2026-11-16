@@ -53,6 +53,10 @@ var burying: Array[RigidBody3D] = []
 ## Машина, в которой сидим, и поворот головы относительно неё (0 — прямо вперёд)
 var vehicle: Van
 var seat_look: float = 0.0
+## В чём едем, если это не машина (ванна-санки)
+var ride: Item
+## Куда смотрит сиденье в осях того, на чём сидим (PI — вперёд машины, +Z)
+var seat_yaw: float = PI
 ## Где глаза сидящего, в осях машины
 var seat_eye_local := Vector3.ZERO
 
@@ -156,7 +160,7 @@ func _physics_process(delta: float) -> void:
 		belt.use_slot(_input.slot_pressed - 1)
 	grab.tick(_input, delta)
 	if _input.flashlight_pressed:
-		if mode == Mode.SEATED and vehicle.driver == self:
+		if mode == Mode.SEATED and vehicle != null and vehicle.driver == self:
 			vehicle.set_headlights(not vehicle.headlights_on)   # за рулём F — фары
 		else:
 			flashlight_on = not flashlight_on
@@ -604,20 +608,92 @@ func sit(van: Van, seat: Node3D) -> void:
 	grab.release(false)
 	mode = Mode.SEATED
 	vehicle = van
+	if flashlight_on:
+		# в кабине свой фонарь слепит от стекла: гасим при посадке
+		flashlight_on = false
+		flashlight_toggled.emit(false)
 	velocity = Vector3.ZERO
 	sprinting = false
 	crouching = false
 	_collider.disabled = true
 	seat_look = 0.0
+	seat_yaw = PI
 	pitch = 0.0
 	_sat_frame = Engine.get_physics_frames()   # то же нажатие E не должно сразу высадить
 	seat_eye_local = van.to_local(seat.global_position) + Vector3.UP * feel.seat_eye_height
 	_tick_seated()
 
 
+## То, на чём сидим: машина или ванна.
+func seat_body() -> Node3D:
+	return vehicle if vehicle != null else ride
+
+
+## Сесть в ванну: едем вместе с ней, лицом вдоль её длины.
+func sit_on(item: Item) -> void:
+	if mode != Mode.NORMAL or not item.can_ride():
+		return
+	grab.release(false)
+	mode = Mode.SEATED
+	ride = item
+	vehicle = null
+	velocity = Vector3.ZERO
+	sprinting = false
+	crouching = false
+	_collider.disabled = true
+	seat_look = 0.0
+	seat_yaw = -PI * 0.5
+	pitch = 0.0
+	_sat_frame = Engine.get_physics_frames()
+	seat_eye_local = Vector3(-0.25, item.data.ride_eye_height, 0.0)
+	item.start_ride(self)
+	_tick_seated()
+
+
+## Вылезти из ванны рядом с ней.
+func leave_ride() -> void:
+	if mode != Mode.SEATED or ride == null:
+		return
+	var item: Item = ride
+	ride = null
+	var target: Vector3 = global_position
+	if is_instance_valid(item):
+		item.end_ride()
+		var side: Vector3 = item.global_basis.z.slide(Vector3.UP).normalized()
+		target = item.global_position + Vector3.UP * 0.9
+		# пока вылезаем, ванна нас не толкает: иначе выстрелит из-под ног
+		item.add_collision_exception_with(self)
+		var item_id: int = item.get_instance_id()
+		get_tree().create_timer(0.6, false, true).timeout.connect(func() -> void:
+			var later: Item = instance_from_id(item_id) as Item
+			if later != null and later.rider != self:
+				later.remove_collision_exception_with(self))
+		for spot: Vector3 in [item.global_position + side * 1.1, item.global_position - side * 1.1]:
+			var feet: Vector3 = _floor_under(spot + Vector3.UP * 1.2)
+			if _can_fit(feet, feel.stand_height):
+				target = feet
+				break
+		velocity = item.linear_velocity
+	global_position = target
+	reset_physics_interpolation()
+	_collider.disabled = false
+	mode = Mode.NORMAL
+
+
+## Ванна врезалась или перевернулась: седок вылетает и падает.
+func thrown_from_ride(impact: float) -> void:
+	if ride == null:
+		return
+	leave_ride()
+	_enter_downed(impact)
+
+
 ## Выйти из машины рядом с дверью водителя (или где найдётся место).
 func leave_vehicle() -> void:
 	if mode != Mode.SEATED:
+		return
+	if ride != null:
+		leave_ride()
 		return
 	var van: Van = vehicle
 	var door: Vector3 = van.release(self)
@@ -639,6 +715,21 @@ func leave_vehicle() -> void:
 
 
 func _tick_seated() -> void:
+	if ride != null:
+		if not is_instance_valid(ride) or ride.global_basis.y.y < 0.3:
+			if is_instance_valid(ride):
+				thrown_from_ride(3.0)
+			else:
+				leave_ride()
+			return
+		ride.ride_control(_input.move)
+		global_position = ride.to_global(seat_eye_local) - Vector3.UP * eye_height()
+		velocity = ride.linear_velocity
+		var along: Vector3 = ride.global_basis * (Basis(Vector3.UP, seat_yaw + seat_look) * Vector3.FORWARD)
+		yaw = atan2(-along.x, -along.z)
+		if _input.interact_pressed and Engine.get_physics_frames() != _sat_frame:
+			leave_ride()
+		return
 	if not is_instance_valid(vehicle):
 		vehicle = null
 		_collider.disabled = false

@@ -35,6 +35,8 @@ var pushing: bool = false
 var throw_charge: float = 0.0
 ## Насколько предмет отстал от точки удержания, м (для рук и «поводка»)
 var stretch: float = 0.0
+## Обожгли руки кислотой: столько секунд ничего не взять
+var burn_wait: float = 0.0
 
 var _player: PlayerController
 var _feel: PlayerFeel
@@ -119,6 +121,7 @@ func tick(input: PlayerInput, delta: float) -> void:
 		dir.y = maxf(dir.y, 0.0)
 		focus_van.push(_van_point, dir)
 	_shovel_wait = maxf(_shovel_wait - delta, 0.0)
+	burn_wait = maxf(burn_wait - delta, 0.0)
 	if held == null:
 		throw_charge = 0.0
 		if input.throw_held and _shovel_wait <= 0.0:
@@ -126,7 +129,7 @@ func tick(input: PlayerInput, delta: float) -> void:
 				_shovel(focus_dump.dig(focus_cell))
 			elif focus is Item and (focus as Item).data.is_trash() and not focus.freeze:
 				_shovel(focus as Item)   # лежащий мусор тоже отбрасываем
-		if input.grab_held and not _was_grab_held:
+		if input.grab_held and not _was_grab_held and burn_wait <= 0.0:
 			if focus != null:
 				if focus.has_meta(&"dump_site"):
 					(focus.get_parent() as Dump).release_site(focus as Item)
@@ -233,6 +236,10 @@ func _update_focus() -> void:
 		if body != null and (not body.freeze or body.has_meta(&"dump_site") or body.has_meta(&"burying")):
 			focus = body
 			focus.set_meta(&"aim_point", hit["position"])
+			if body is Item and focus_use == null:
+				# в ванну можно сесть: E, а ЛКМ по-прежнему берёт
+				focus_action = (body as Item).ride_action()
+				focus_use = body if not focus_action.is_empty() else null
 			focus_dump = null
 			return
 		# куча: запоминаем первый попавший луч, но вещь рядом важнее мусора
@@ -250,6 +257,13 @@ func _grab(body: RigidBody3D) -> void:
 	var point: Vector3 = body.get_meta(&"aim_point", body.global_position)
 	_local_point = body.global_transform.affine_inverse() * point
 	_hold_basis = Basis(Vector3.UP, _player.yaw).inverse() * body.global_basis
+	var item: Item = body as Item
+	if item != null and item.data != null and item.data.leak_tilt_deg > 0.0:
+		# то, что течёт, руки сами ставят ровно; дальше — не раскачивай
+		var flat: Vector3 = body.global_basis.x.slide(Vector3.UP)
+		var item_yaw: float = atan2(-flat.z, flat.x) if flat.length() > 0.1 else _player.yaw
+		_hold_basis = Basis(Vector3.UP, item_yaw - _player.yaw)
+		item.leak_grace(1.2)
 	_saved_can_sleep = body.can_sleep
 	body.can_sleep = false
 	body.sleeping = false
@@ -282,6 +296,14 @@ func release(thrown: bool) -> void:
 
 
 func _hold(delta: float) -> void:
+	var item: Item = held as Item
+	if item != null and item.leaking:
+		# кислота из аккумулятора жжёт руки: бросаем и какое-то время не можем взять
+		WorldPopup.spawn(get_tree().current_scene, item.global_position + Vector3.UP * 0.4, tr("POPUP_ACID"), Color(0.75, 1.0, 0.3))
+		Audio.play_at(&"deny", item.global_position, -4.0)
+		burn_wait = _feel.acid_burn_time
+		release(false)
+		return
 	var mass: float = held.mass
 	var point: Vector3 = grab_point()
 	var target: Vector3 = hold_target()

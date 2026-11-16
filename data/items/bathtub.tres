@@ -15,6 +15,7 @@ metal = 4
 unit_price = 0
 break_speed = 0.0
 break_loss = 0.0
+rideable = true
 dump_cells = Vector3i(2, 2, 1)
 dump_rotation_deg = Vector3(0, 0, 0)
 impact_sound = &"metal_heavy"

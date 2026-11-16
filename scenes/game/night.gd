@@ -14,13 +14,23 @@ var auto_advance: bool = true
 var yard: ScrapYard
 var run: RunState
 var finished: bool = false
+## Строки итога ночи (для тестов и сети)
+var summary_lines: PackedStringArray = []
 var dawn: bool = false
 ## Въехали на свалку: с этого момента идут часы
 var entered: bool = false
 
-var _hud: Label
+const NOTICE_WIDTH: float = 420.0
+
+var _clock: Label
+var _night_label: Label
+var _quota_bar: ProgressBar
+var _quota_label: Label
+var _cash_label: Label
+var _notice_panel: PanelContainer
 var _notice: Label
-var _summary: Label
+var _summary_shade: ColorRect
+var _summary: VBoxContainer
 var _notice_time: float = 0.0
 var _siren_wait: float = 0.0
 
@@ -81,6 +91,12 @@ func _populate() -> void:
 	dump.collapsed.connect(func(_center: Vector3, _pieces: int) -> void: run.count(&"collapses"))
 	get_tree().node_added.connect(_on_node_added)
 	_build_hud()
+	if OS.get_cmdline_user_args().has("--demo-summary"):
+		# для снимков интерфейса: сразу показать итог ночи
+		run.sell(run.quota() + 350)
+		run.count(&"falls", 3)
+		run.count(&"sold_items", 7)
+		get_tree().create_timer(0.3).timeout.connect(finish)
 	_say(tr("NIGHT_START") % [run.night, run.economy.nights(), Fmt.rub(run.quota())], 8.0)
 
 
@@ -138,39 +154,64 @@ func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 6
 	add_child(layer)
-	_hud = _label(layer, 20)
-	_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_hud.offset_top = 10.0
-	_notice = _label(layer, 26)
-	_notice.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_notice.offset_top = 90.0
-	_summary = _label(layer, 30)
-	_summary.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_summary.visible = false
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.72)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.show_behind_parent = true
-	_summary.add_child(shade)
+	# слева сверху: часы, ночь, норма полоской, касса
+	var status: PanelContainer = Ui.panel()
+	status.position = Vector2(14, 14)
+	layer.add_child(status)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", 3)
+	status.add_child(column)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override(&"separation", 10)
+	column.add_child(top)
+	_clock = Ui.label("00:00", Ui.SIZE_BIG)
+	top.add_child(_clock)
+	_night_label = Ui.label("", Ui.SIZE_SMALL, Ui.DIM)
+	_night_label.size_flags_vertical = Control.SIZE_SHRINK_END
+	top.add_child(_night_label)
+	_quota_bar = Ui.bar(170.0)
+	column.add_child(_quota_bar)
+	_quota_label = Ui.label("", Ui.SIZE_SMALL)
+	column.add_child(_quota_label)
+	_cash_label = Ui.label("", Ui.SIZE_SMALL, Ui.DIM)
+	column.add_child(_cash_label)
+	# сверху по центру: короткие сообщения, сами гаснут
+	_notice_panel = Ui.panel()
+	_notice_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_notice_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_notice_panel.offset_top = 18.0
+	_notice_panel.modulate.a = 0.0
+	layer.add_child(_notice_panel)
+	_notice = Ui.label("", Ui.SIZE_TEXT)
+	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_notice.custom_minimum_size = Vector2(NOTICE_WIDTH, 0)
+	_notice_panel.add_child(_notice)
+	# итог ночи: карточка по центру на затемнённом фоне
+	_summary_shade = ColorRect.new()
+	_summary_shade.color = Color(0.0, 0.0, 0.0, 0.55)
+	_summary_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_summary_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_summary_shade.visible = false
+	layer.add_child(_summary_shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_summary_shade.add_child(center)
+	var card: PanelContainer = Ui.panel(Color(0.07, 0.07, 0.08, 0.94), 18.0)
+	center.add_child(card)
+	_summary = VBoxContainer.new()
+	_summary.add_theme_constant_override(&"separation", 5)
+	_summary.custom_minimum_size = Vector2(340, 0)
+	card.add_child(_summary)
 
 
-func _label(layer: CanvasLayer, font_size: int) -> Label:
-	var label := Label.new()
-	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override(&"font_size", font_size)
-	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	label.add_theme_constant_override(&"outline_size", 6)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(label)
-	return label
-
-
-## Крупная надпись под часами на несколько секунд.
+## Короткое сообщение сверху на несколько секунд.
 func _say(text: String, seconds: float = 4.0) -> void:
 	_notice.text = text
+	_notice.custom_minimum_size.x = minf(NOTICE_WIDTH, _notice.get_theme_font(&"font").get_string_size(text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, Ui.SIZE_TEXT).x + 2.0)
+	_notice_panel.reset_size()
 	_notice_time = seconds
 
 
@@ -198,13 +239,19 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if _hud == null:
+	if _clock == null:
 		return
 	_notice_time -= delta
-	_notice.visible = _notice_time > 0.0 and not finished
-	_hud.text = tr("NIGHT_HUD") % [run.night, run.economy.nights(), Game.clock_text(),
-			Fmt.rub(run.earned), Fmt.rub(run.quota()), Fmt.rub(run.money)]
-	_hud.modulate = Color(1.0, 0.6, 0.5) if dawn else Color.WHITE
+	var want: float = 1.0 if _notice_time > 0.0 and not finished else 0.0
+	_notice_panel.modulate.a = move_toward(_notice_panel.modulate.a, want, delta * 4.0)
+	_clock.text = Game.clock_text()
+	_clock.add_theme_color_override(&"font_color", Ui.DANGER if dawn else Ui.TEXT)
+	_night_label.text = tr("NIGHT_OF") % [run.night, run.economy.nights()]
+	var met: bool = run.quota_met()
+	_quota_bar.value = clampf(float(run.earned) / maxf(run.quota(), 1.0), 0.0, 1.0)
+	_quota_label.text = tr("NIGHT_QUOTA") % [Fmt.rub(run.earned), Fmt.rub(run.quota())]
+	_quota_label.add_theme_color_override(&"font_color", Ui.GOOD if met else Ui.TEXT)
+	_cash_label.text = tr("NIGHT_CASH") % Fmt.rub(run.money)
 
 
 ## Закончить ночь: посчитать норму, показать итог.
@@ -219,27 +266,39 @@ func finish() -> void:
 	Game.set_phase(Game.Phase.SUMMARY)
 	Game.save_run()
 	_player.scripted_input = PlayerInput.new()     # игрок замирает
-	var lines: PackedStringArray = []
+	var title: String = ""
+	var title_color: Color = Ui.GOOD
+	var money_line: String = ""
 	match outcome:
 		RunState.Outcome.NIGHT_PASSED:
-			lines.append(tr("SUMMARY_PASSED") % run.night)
-			lines.append(tr("SUMMARY_MONEY") % [Fmt.rub(earned), Fmt.rub(quota), Fmt.rub(earned - quota)])
+			title = tr("SUMMARY_PASSED") % run.night
+			money_line = tr("SUMMARY_MONEY") % [Fmt.rub(earned), Fmt.rub(quota), Fmt.rub(earned - quota)]
 		RunState.Outcome.WON:
-			lines.append(tr("SUMMARY_WON"))
-			lines.append(tr("SUMMARY_MONEY") % [Fmt.rub(earned), Fmt.rub(quota), Fmt.rub(earned - quota)])
+			title = tr("SUMMARY_WON")
+			money_line = tr("SUMMARY_MONEY") % [Fmt.rub(earned), Fmt.rub(quota), Fmt.rub(earned - quota)]
 		_:
-			lines.append(tr("SUMMARY_LOST"))
-			lines.append(tr("SUMMARY_SHORT") % [Fmt.rub(earned), Fmt.rub(quota)])
-	lines.append("")
+			title = tr("SUMMARY_LOST")
+			title_color = Ui.DANGER
+			money_line = tr("SUMMARY_SHORT") % [Fmt.rub(earned), Fmt.rub(quota)]
+	summary_lines = [title, money_line]
+	var head: Label = Ui.label(title, Ui.SIZE_BIG, title_color)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_summary.add_child(head)
+	var money: Label = Ui.label(money_line, Ui.SIZE_TEXT)
+	money.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	money.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_summary.add_child(money)
+	_summary.add_child(HSeparator.new())
 	for stat: Array in [[&"buried", "STAT_BURIED"], [&"collapses", "STAT_COLLAPSES"], [&"broken", "STAT_BROKEN"],
 			[&"falls", "STAT_FALLS"], [&"sold_items", "STAT_SOLD"], [&"sneaked", "STAT_SNEAKED"]]:
 		var n: int = run.stats.get(stat[0], 0)
 		if n > 0:
-			lines.append(tr(stat[1]) % n)
-	lines.append("")
-	lines.append(tr("SUMMARY_NEXT") if outcome == RunState.Outcome.NIGHT_PASSED else tr("SUMMARY_AGAIN"))
-	_summary.text = "\n".join(lines)
-	_summary.visible = true
+			summary_lines.append(tr(stat[1]) % n)
+			_summary.add_child(Ui.label(tr(stat[1]) % n, Ui.SIZE_SMALL, Ui.DIM))
+	var next: HBoxContainer = Ui.hint_row(tr("SUMMARY_NEXT") if outcome == RunState.Outcome.NIGHT_PASSED else tr("SUMMARY_AGAIN"))
+	_summary.add_child(next)
+	_summary_shade.visible = true
 	night_finished.emit(outcome)
 
 

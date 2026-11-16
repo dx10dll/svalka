@@ -37,7 +37,6 @@ func _populate() -> void:
 	_player.position = Vector3(2.5, 0.05, 3.0)
 	_player.rotation.y = PI * 0.5
 	add_child(_player)
-	_build_hint("HINT_GARAGE")
 	_env.volumetric_fog_density = 0.008     # в гараже воздух чище, чем на свалке
 
 

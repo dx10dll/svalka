@@ -145,3 +145,7 @@ extends Resource
 @export var buried_air: float = 60.0
 ## Сколько рывков (нажатий прыжка) нужно, чтобы столкнуть с себя один кусок
 @export var buried_struggle_presses: int = 8
+## Сколько секунд руки не слушаются после кислоты из аккумулятора
+@export var acid_burn_time: float = 1.5
+## Сколько весит сам мужичок (добавляется к ванне, когда в ней едут), кг
+@export var body_mass: float = 45.0

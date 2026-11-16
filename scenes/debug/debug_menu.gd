@@ -50,15 +50,21 @@ func toggle() -> void:
 
 func _process(_delta: float) -> void:
 	var bodies: int = int(Performance.get_monitor(Performance.PHYSICS_3D_ACTIVE_OBJECTS))
-	_stats.text = tr("DEBUG_STATS") % [Engine.get_frames_per_second(), bodies, Game.clock_text()]
-	_stats.modulate = Color(1.0, 0.45, 0.35) if bodies > ACTIVE_BODY_BUDGET else Color.WHITE
+	# в игре — только мелкий счётчик кадров в углу, подробности при открытом меню
+	if _panel.visible:
+		_stats.text = tr("DEBUG_STATS") % [Engine.get_frames_per_second(), bodies, Game.clock_text()]
+	else:
+		_stats.text = "%d" % Engine.get_frames_per_second()
+	_stats.modulate = Color(1.0, 0.45, 0.35) if bodies > ACTIVE_BODY_BUDGET else Color(1.0, 1.0, 1.0, 0.45)
 
 
 func _build() -> void:
 	_stats = Label.new()
-	_stats.position = Vector2(12, 8)
-	_stats.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	_stats.add_theme_constant_override(&"outline_size", 4)
+	_stats.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_stats.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_stats.offset_right = -10.0
+	_stats.offset_top = 6.0
+	_stats.add_theme_font_size_override(&"font_size", 11)
 	add_child(_stats)
 
 	_panel = PanelContainer.new()

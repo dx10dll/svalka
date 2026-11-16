@@ -142,9 +142,11 @@ func _build_hint(key: String) -> void:
 	label.text = key
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	label.offset_top = -40.0
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	label.add_theme_constant_override(&"outline_size", 4)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	label.offset_right = -12.0
+	label.offset_top = -24.0
+	label.add_theme_font_size_override(&"font_size", 11)
+	label.add_theme_color_override(&"font_color", Color(1.0, 1.0, 1.0, 0.4))
 	layer.add_child(label)
 	add_child(layer)
 

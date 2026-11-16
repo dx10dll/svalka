@@ -182,8 +182,21 @@ def camera() -> None:
     pipeline.finish("items/camera", tri_budget=500)
 
 
+def can() -> None:
+    """Одна мятая алюминиевая банка: то, что высыпается из порванного мешка."""
+    pipeline.reset_scene()
+    b = geo.Builder("mesh")
+    b.cylinder(0.034, 0.12, (0, 0, 0.06), "aluminium", segments=7, cap_color="aluminium_dark")
+    obj = b.build()
+    geo.grime(obj, seed=17, dirt_height=0.05, strength=0.4, rust_tint=0.0, noise_scale=10.0)
+    geo.collider_box("body", (0.068, 0.068, 0.12), (0, 0, 0.06))
+    geo.grip("right", (0, 0, 0.06), (0, 0, 0))
+    pipeline.finish("items/can", tri_budget=120)
+
+
 def build() -> None:
     cans_bag()
+    can()
     car_battery()
     bathtub()
     car_radiator()

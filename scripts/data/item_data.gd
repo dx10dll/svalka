@@ -23,6 +23,29 @@ enum Metal { COPPER, BRASS, ALUMINIUM, LEAD, FERROUS, ELECTRONICS, ANTIQUE, STRA
 @export var break_speed: float = 0.0
 ## Какая доля цены теряется при полном разбитии (0.7 = -70%)
 @export_range(0.0, 1.0) var break_loss: float = 0.0
+@export_group("Особенности")
+## Что высыпается, если сильно ударить (мешок банок); пусто — ничего
+@export var spill_item: ItemData
+@export var spill_count: int = 0
+## Удар сильнее этого рвёт мешок, м/с
+@export var spill_speed: float = 0.0
+## Наклон от вертикали, с которого течёт кислота, градусы (0 — не течёт)
+@export var leak_tilt_deg: float = 0.0
+## Сколько секунд надо продержать наклонённым, чтобы потекло
+@export var leak_time: float = 0.6
+## В этом можно съехать с горы (ванна)
+@export var rideable: bool = false
+## Высота глаз седока над началом координат предмета, м
+@export var ride_eye_height: float = 0.75
+## Трение днища, пока в нём едут (меньше — скользит лучше)
+@export var ride_friction: float = 0.12
+## Сила, с которой седок отталкивается и подруливает, Н и Н·м
+@export var ride_push_force: float = 700.0
+@export var ride_steer_torque: float = 260.0
+## Быстрее этого отталкиваться уже нельзя, м/с
+@export var ride_push_max_speed: float = 3.0
+## Удар сильнее этого выбрасывает седока, м/с
+@export var ride_crash_speed: float = 7.0
 @export_group("Инструмент")
 ## Что это за инструмент (shovel, crowbar, metal_detector, headlamp); пусто — обычная вещь.
 ## Инструмент работает, пока висит на поясе.

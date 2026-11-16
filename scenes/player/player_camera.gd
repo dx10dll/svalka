@@ -115,10 +115,10 @@ func _process(delta: float) -> void:
 	var basis_n: Basis = yaw_basis * Basis(Vector3.RIGHT, _player.pitch + mantle_pitch) * Basis(Vector3.BACK, roll)
 
 	# за рулём: голова едет и кренится вместе с машиной
-	if _player.mode == PlayerController.Mode.SEATED and _player.vehicle != null:
-		var seat: Transform3D = _player.vehicle.get_global_transform_interpolated()
+	if _player.mode == PlayerController.Mode.SEATED and is_instance_valid(_player.seat_body()):
+		var seat: Transform3D = _player.seat_body().get_global_transform_interpolated()
 		pos = seat * _player.seat_eye_local + Vector3.UP * _dip
-		basis_n = seat.basis.orthonormalized() * Basis(Vector3.UP, PI + _player.seat_look) \
+		basis_n = seat.basis.orthonormalized() * Basis(Vector3.UP, _player.seat_yaw + _player.seat_look) \
 				* Basis(Vector3.RIGHT, _player.pitch)
 
 	# сбили с ног: камера сидит в голове рэгдолла и кувыркается вместе с ней,

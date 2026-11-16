@@ -127,3 +127,11 @@ GUARD_THANKS,Сторож: «Проезжай. Я ничего не видел»
 GUARD_SNEAKED,00:00. Пролезли мимо сторожа. Он пока не заметил.,00:00. Sneaked past the guard. He hasn't noticed yet.
 NIGHT_CLOCK_STARTED,00:00. Часы пошли. В 05:00 всё кончится.,00:00. The clock is running. It all ends at 05:00.
 STAT_SNEAKED,Пролезли мимо сторожа: %d,Sneaked past the guard: %d
+ITEM_CAN,Алюминиевая банка,Aluminium can
+POPUP_BAG_TORN,Мешок порвался!,The bag tore!
+POPUP_ACID,Кислота! Жжёт руки,Acid! It burns
+HINT_RIDE,E — сесть и съехать,E — sit in and slide
+HUD_RIDE,W — оттолкнуться · A D — подруливать · E — вылезти,W push off · A D steer · E get out
+NIGHT_OF,Ночь %d из %d,Night %d of %d
+NIGHT_QUOTA,Норма  %s / %s,Quota  %s / %s
+NIGHT_CASH,Касса  %s,Cash  %s

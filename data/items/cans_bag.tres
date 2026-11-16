@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/item_data.gd" id="1"]
 [ext_resource type="PackedScene" path="res://assets/models/items/cans_bag.glb" id="2"]
+
+[ext_resource type="Resource" path="res://data/items/can.tres" id="3"]
 
 [resource]
 script = ExtResource("1")
@@ -15,6 +17,9 @@ metal = 2
 unit_price = 0
 break_speed = 0.0
 break_loss = 0.0
+spill_item = ExtResource("3")
+spill_count = 10
+spill_speed = 5.5
 dump_cells = Vector3i(1, 1, 1)
 dump_rotation_deg = Vector3(0, 0, 0)
 impact_sound = &"metal_ring"
