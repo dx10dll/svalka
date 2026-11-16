@@ -26,6 +26,8 @@ var focus_cell: Vector3i = Dump.NO_CELL
 ## Машина под прицелом и что с ней можно сделать клавишей E ({} — ничего)
 var focus_van: Van
 var focus_action: Dictionary = {}
+## Упёрлись руками в машину и толкаем
+var pushing: bool = false
 ## Заряд броска 0..1
 var throw_charge: float = 0.0
 ## Насколько предмет отстал от точки удержания, м (для рук и «поводка»)
@@ -43,6 +45,7 @@ var _outlined: Item
 var _dump_point := Vector3.ZERO
 var _shovel_wait: float = 0.0
 var _shovel_side: float = 1.0
+var _van_point := Vector3.ZERO
 
 
 func setup(player: PlayerController) -> void:
@@ -87,6 +90,7 @@ func tick(input: PlayerInput, delta: float) -> void:
 		release(false)
 		focus = null
 		focus_van = null
+		pushing = false
 		_update_highlight()
 		_was_grab_held = input.grab_held
 		return
@@ -95,6 +99,12 @@ func tick(input: PlayerInput, delta: float) -> void:
 	if input.interact_pressed and focus_van != null and not focus_action.is_empty():
 		focus_van.interact(_player, focus_action["action"])
 		return
+	pushing = held == null and focus_van != null and input.grab_held
+	if pushing:
+		# толкаем туда, куда смотрим, но без «вниз»: в землю машину не вдавить
+		var dir: Vector3 = look_dir()
+		dir.y = maxf(dir.y, 0.0)
+		focus_van.push(_van_point, dir)
 	_shovel_wait = maxf(_shovel_wait - delta, 0.0)
 	if held == null:
 		throw_charge = 0.0
@@ -187,9 +197,17 @@ func _update_focus() -> void:
 		if hit["collider"] is Van:
 			if focus_van == null and focus_dump == null:
 				focus_van = hit["collider"]
+				_van_point = hit["position"]
 				focus_action = focus_van.interaction_at(hit["position"])
 			continue
 		var body: RigidBody3D = hit["collider"] as RigidBody3D
+		if body != null and body.has_meta(&"strapped_to"):
+			# притянутый ремнями груз — часть машины: руками не взять
+			if focus_van == null and focus_dump == null:
+				focus_van = body.get_meta(&"strapped_to")
+				_van_point = hit["position"]
+				focus_action = {"hint": "HINT_VAN_STRAPS_OFF", "action": &"straps"}
+			continue
 		if body != null and (not body.freeze or body.has_meta(&"dump_site") or body.has_meta(&"burying")):
 			focus = body
 			focus.set_meta(&"aim_point", hit["position"])

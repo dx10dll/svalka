@@ -10,6 +10,8 @@ extends VehicleBody3D
 
 signal engine_toggled(on: bool)
 signal doors_toggled(open: bool)
+signal stalled_out
+signal straps_toggled(on: bool)
 
 const MODEL: String = "res://assets/models/vehicles/van.glb"
 const FEEL_PATH: String = "res://data/van_feel.tres"
@@ -24,6 +26,11 @@ var steer: float = 0.0
 var brake_input: float = 1.0
 ## Кто за рулём
 var driver: PlayerController
+var passenger: PlayerController
+## Мотор заглох: надо отпустить газ и нажать снова, стартер крутит crank_time
+var stalled: bool = false
+## Груз притянут ремнями к кузову
+var strapped: bool = false
 var engine_on: bool = false
 var headlights_on: bool = false
 var doors_open: bool = false
@@ -39,6 +46,12 @@ var _door_angle: float = 0.0
 var _lights: Array[SpotLight3D] = []
 var _sound: AudioStreamPlayer3D
 var _rpm: float = 0.0
+var _stall_clock: float = 0.0
+var _crank: float = 0.0
+var _gas_released: bool = true
+var _pushed: float = 0.0
+var _strap_joints: Array[Joint3D] = []
+var _strap_visual: Node3D
 
 
 func _ready() -> void:
@@ -66,6 +79,7 @@ func _ready() -> void:
 	_build_cargo_area()
 	_build_lights()
 	_build_sound()
+	_build_straps()
 	for name: StringName in [&"seat_driver", &"seat_passenger"]:
 		_seats[name] = _model.find_child("grip_" + name, true, false)
 	_exit_driver = _model.find_child("grip_exit_driver", true, false)
@@ -185,6 +199,25 @@ func _build_sound() -> void:
 	add_child(_sound)
 
 
+## Ремни: две оранжевые ленты крест-накрест в проёме кузова, видны, когда затянуты.
+func _build_straps() -> void:
+	_strap_visual = Node3D.new()
+	_strap_visual.position = Vector3(0.0, 1.32, -2.02)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.85, 0.42, 0.08)
+	mat.roughness = 0.9
+	for tilt: float in [-0.66, 0.66]:
+		var band := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(2.2, 0.07, 0.015)
+		band.mesh = box
+		band.material_override = mat
+		band.rotation.z = tilt
+		_strap_visual.add_child(band)
+	_strap_visual.visible = false
+	add_child(_strap_visual)
+
+
 # --- состояние -------------------------------------------------------------------
 
 ## Скорость вдоль машины, м/с (плюс — вперёд).
@@ -205,6 +238,52 @@ func cargo_mass() -> float:
 	return total
 
 
+## Предметы в кузове.
+func cargo_bodies() -> Array[RigidBody3D]:
+	var out: Array[RigidBody3D] = []
+	for body: Node3D in _cargo_area.get_overlapping_bodies():
+		if body != self and body is RigidBody3D:
+			out.append(body)
+	return out
+
+
+## Затянуть или отпустить ремни. Затянутый груз жёстко держится за кузов
+## и не сползает даже с открытыми дверями; взять его руками нельзя, пока не отпустишь.
+func set_straps(on: bool) -> void:
+	if strapped == on:
+		return
+	strapped = on
+	for joint: Joint3D in _strap_joints:
+		if is_instance_valid(joint):
+			joint.queue_free()
+	_strap_joints.clear()
+	for body: RigidBody3D in get_tree().get_nodes_in_group(&"strapped_cargo"):
+		if body.get_meta(&"strapped_to", null) == self:
+			body.remove_meta(&"strapped_to")
+			body.remove_from_group(&"strapped_cargo")
+	if on:
+		for body: RigidBody3D in cargo_bodies():
+			var joint := Generic6DOFJoint3D.new()   # все оси заперты по умолчанию
+			add_child(joint)
+			joint.global_position = body.global_position
+			joint.node_a = joint.get_path_to(self)
+			joint.node_b = joint.get_path_to(body)
+			_strap_joints.append(joint)
+			body.set_meta(&"strapped_to", self)
+			body.add_to_group(&"strapped_cargo")
+	_strap_visual.visible = on
+	Audio.play_at(&"grab", _strap_visual.global_position, -4.0, 0.7 if on else 1.1)
+	straps_toggled.emit(on)
+
+
+## Толчок руками в точке кузова. Зовётся каждый тик, пока игрок толкает.
+func push(world_point: Vector3, direction: Vector3) -> void:
+	var on_wheels: bool = global_basis.y.y > 0.6
+	var force: float = feel.push_force if on_wheels else feel.flip_force
+	apply_force(direction.normalized() * force, world_point - global_position)
+	_pushed = 0.15
+
+
 ## Доля тяги с учётом перегруза: 1 — норма, меньше — мотор не тянет.
 func power_factor() -> float:
 	var over: float = maxf(cargo_mass() - feel.capacity, 0.0)
@@ -217,9 +296,12 @@ func rear_height() -> float:
 
 
 func set_engine(on: bool) -> void:
+	if on:
+		stalled = false
 	if engine_on == on:
 		return
 	engine_on = on
+	_stall_clock = 0.0
 	set_headlights(on)
 	if _sound != null:
 		if on:
@@ -251,6 +333,7 @@ func toggle_doors() -> void:
 
 func _physics_process(delta: float) -> void:
 	var speed: float = forward_speed()
+	_update_stall(delta, speed)
 	var power: float = power_factor() if engine_on else 0.0
 	# руль: на скорости колёса поворачиваются меньше
 	var limit: float = lerpf(feel.steer_max, feel.steer_max_fast, clampf(absf(speed) / feel.max_speed, 0.0, 1.0))
@@ -272,19 +355,62 @@ func _physics_process(delta: float) -> void:
 			force = feel.engine_force * 0.7 * power * gas * clampf(1.0 + speed / feel.max_reverse_speed, 0.0, 1.0)
 	else:
 		braking = maxf(braking, feel.idle_brake)
-	engine_force = force
+	# толкают пустую машину: считаем, что её сняли с ручника
+	_pushed = maxf(_pushed - delta, 0.0)
+	if _pushed > 0.0 and driver == null:
+		braking = 0.0
+	engine_force = force / 4.0     # движок отдаёт это число на каждое ведущее колесо
 	brake = braking
 	# на ручнике стоящую машину «примораживаем» вязкостью: иначе она ползёт на подвеске
-	var parked: bool = brake_input >= 1.0 and absf(speed) < 0.6 and _wheels[0].is_in_contact() and _wheels[3].is_in_contact()
+	var parked: bool = _pushed <= 0.0 and brake_input >= 1.0 and absf(speed) < 0.6 and _wheels[0].is_in_contact() and _wheels[3].is_in_contact()
 	linear_damp = feel.parked_damp if parked else 0.0
 	angular_damp = feel.parked_damp if parked else 0.0
 	# обороты для звука: от скорости и от газа
 	var target_rpm: float = clampf(absf(speed) / feel.max_speed * 0.75 + absf(gas) * 0.35, 0.0, 1.2) if engine_on else 0.0
 	_rpm = lerpf(_rpm, target_rpm, 1.0 - exp(-4.0 * delta))
-	if _sound != null and engine_on:
+	if _sound != null and _crank > 0.0:
+		_sound.pitch_scale = 0.42 + 0.08 * sin(_crank * 40.0)   # стартер: низко и с дрожью
+		_sound.volume_db = -8.0
+	elif _sound != null and engine_on:
 		_sound.pitch_scale = 0.75 + _rpm * 1.25
 		# под нагрузкой (газ в пол, а скорость не растёт) мотор звучит громче и ниже
 		_sound.volume_db = -9.0 + absf(gas) * 6.0 + (1.0 - power) * 3.0
+
+
+## Мотор глохнет, если газ в пол, а машина не едет (перегруз на подъёме, упёрлась).
+## Завести: отпустить газ и нажать снова.
+func _update_stall(delta: float, speed: float) -> void:
+	var gas: float = absf(throttle)
+	if gas < 0.1:
+		_gas_released = true
+	if stalled:
+		if _crank > 0.0:
+			_crank -= delta
+			if _crank <= 0.0:
+				stalled = false
+				engine_on = true
+				engine_toggled.emit(true)
+		elif gas > 0.5 and _gas_released and driver != null:
+			_crank = feel.crank_time
+			_gas_released = false
+			if _sound != null:
+				_sound.play()
+		return
+	# не едет туда, куда газуем (стоит или скатывается назад)
+	if engine_on and gas > 0.5 and speed * signf(throttle) < 0.35 and brake_input < 0.5:
+		_stall_clock += delta
+		if _stall_clock >= feel.stall_time:
+			stalled = true
+			engine_on = false
+			_stall_clock = 0.0
+			_gas_released = false
+			if _sound != null:
+				_sound.stop()
+			Audio.play_impact(&"metal_hollow", to_global(Vector3(0.0, 0.9, 1.6)), 5.0)
+			stalled_out.emit()
+			engine_toggled.emit(false)
+	else:
+		_stall_clock = maxf(_stall_clock - delta * 2.0, 0.0)
 
 
 # --- взаимодействие ----------------------------------------------------------------
@@ -294,8 +420,16 @@ func interaction_at(world_point: Vector3) -> Dictionary:
 	var p: Vector3 = to_local(world_point)
 	if p.z < -1.7:
 		return {"hint": "HINT_VAN_DOORS_CLOSE" if doors_open else "HINT_VAN_DOORS_OPEN", "action": &"doors"}
-	if p.z > 0.75 and p.x > 0.3 and driver == null:
-		return {"hint": "HINT_VAN_DRIVE", "action": &"drive"}
+	if p.z > 0.75:
+		if p.x > 0.3 and driver == null:
+			return {"hint": "HINT_VAN_DRIVE", "action": &"drive"}
+		if p.x < -0.3 and passenger == null:
+			return {"hint": "HINT_VAN_RIDE", "action": &"ride"}
+		return {}
+	if strapped:
+		return {"hint": "HINT_VAN_STRAPS_OFF", "action": &"straps"}
+	if not cargo_bodies().is_empty():
+		return {"hint": "HINT_VAN_STRAPS_ON", "action": &"straps"}
 	return {}
 
 
@@ -303,6 +437,12 @@ func interact(player: PlayerController, action: StringName) -> void:
 	match action:
 		&"doors":
 			toggle_doors()
+		&"straps":
+			set_straps(not strapped)
+		&"ride":
+			if passenger == null:
+				passenger = player
+				player.sit(self, _seats[&"seat_passenger"])
 		&"drive":
 			if driver == null:
 				driver = player
@@ -311,9 +451,16 @@ func interact(player: PlayerController, action: StringName) -> void:
 				set_engine(true)
 
 
-## Игрок встал из-за руля: где ему появиться.
-func release_driver() -> Vector3:
+## Игрок встаёт с места: где ему появиться.
+func release(player: PlayerController) -> Vector3:
+	if player == passenger:
+		passenger = null
+		var out: Vector3 = _exit_driver.position
+		out.x = -out.x
+		return to_global(out)
 	driver = null
+	stalled = false
+	_crank = 0.0
 	throttle = 0.0
 	steer = 0.0
 	brake_input = 1.0      # ручник

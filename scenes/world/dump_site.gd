@@ -21,6 +21,7 @@ const RING_LAMPS: int = 4
 var booth_position := Vector3.ZERO
 var gate_position := Vector3.ZERO
 var fires: Array[Fire] = []
+var mound: Mound
 
 var _rng := RandomNumberGenerator.new()
 var _radius: float = 20.0
@@ -32,6 +33,7 @@ func build(radius: float, site_seed: int) -> void:
 	_rng.seed = site_seed * 2654435761 + 17
 	gate_position = Vector3(0.0, 0.0, radius + ROAD_LENGTH)
 	_build_road()
+	_build_mound()
 	_build_booth()
 	_build_lamps()
 	_build_bonfires()
@@ -82,6 +84,14 @@ func _build_road() -> void:
 		_flat_mesh(Vector2(0.5, length), Vector3(side * (ROAD_WIDTH * 0.5 + 0.2), 0.016, mid), 0.0, Color(0.17, 0.155, 0.12), 1.0)
 	# разворотная площадка у подножия: тут встанет буханка
 	_flat_mesh(Vector2(11.0, 9.0), Vector3(0.0, 0.011, _radius + 5.5), 0.0, Color(0.13, 0.115, 0.1), 0.95)
+
+
+## Насыпь поперёк дороги на полпути к воротам: гружёной машине её ещё надо взять.
+func _build_mound() -> void:
+	mound = Mound.new()
+	mound.position = Vector3(0.0, 0.0, _radius + 21.0)
+	add_child(mound)
+	mound.build()
 
 
 func _build_booth() -> void:

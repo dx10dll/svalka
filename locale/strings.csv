@@ -35,7 +35,7 @@ JUNK_BARREL,Бочка,Barrel
 JUNK_DIRT,Ком земли с хламом,Clod of dirt and junk
 HUD_DIG_HINT,ЛКМ — вытащить · ПКМ — лопата,LMB to pull out · RMB to shovel
 SCENE_DUMP,Этап 3: куча,Stage 3: the heap
-HINT_DUMP,"ЛКМ по куче — вытащить кусок · F фонарь · вещи торчат из мусора · уберёшь опору — поедет завал · F1 отладка","LMB on the heap pulls a piece out · F flashlight · loot sticks out of the junk · remove a support and it slides · F1 debug"
+HINT_DUMP,"ЛКМ по куче — вытащить кусок · F фонарь · вещи торчат из мусора · уберёшь опору — поедет завал · E у буханки — сесть, двери, ремни · F1 отладка","LMB on the heap pulls a piece out · F flashlight · loot sticks out of the junk · remove a support and it slides · E at the van: drive, doors, straps · F1 debug"
 HUD_BURIED,"Завалило! Воздуха на %d с\nПробел — выбираться",Buried! Air for %d s\nSpace to struggle out
 SCENE_MOUNTAIN,Этап 3: гора,Stage 3: the mountain
 HUD_VAN_CARGO,Груз %s из %s,Cargo %s of %s
@@ -46,3 +46,9 @@ HINT_VAN_DOORS_OPEN,E — открыть двери,E to open the doors
 HINT_VAN_DOORS_CLOSE,E — закрыть двери,E to close the doors
 UNIT_KMH,км/ч,km/h
 HINT_VAN,"E у кабины — за руль · E у задних дверей — открыть кузов · груз кладём в кузов руками · перегруз душит мотор","E at the cab to drive · E at the rear doors to open the bay · carry cargo in by hand · overload chokes the engine"
+HINT_VAN_RIDE,E — сесть пассажиром,E to ride
+HINT_VAN_STRAPS_ON,E — затянуть ремни,E to strap the cargo
+HINT_VAN_STRAPS_OFF,E — отпустить ремни,E to release the straps
+HINT_VAN_PUSH,ЛКМ — толкать,LMB to push
+HUD_VAN_LEAVE_PASSENGER,E — выйти,E get out
+HUD_VAN_STALLED,ЗАГЛОХЛА · отпусти газ и нажми снова,STALLED · release the gas and press again

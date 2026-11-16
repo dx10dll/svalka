@@ -144,7 +144,7 @@ func _physics_process(delta: float) -> void:
 	_input = scripted_input if scripted_input != null else _reader.sample()
 	grab.tick(_input, delta)
 	if _input.flashlight_pressed:
-		if mode == Mode.SEATED:
+		if mode == Mode.SEATED and vehicle.driver == self:
 			vehicle.set_headlights(not vehicle.headlights_on)   # за рулём F — фары
 		else:
 			flashlight_on = not flashlight_on
@@ -608,7 +608,7 @@ func leave_vehicle() -> void:
 	if mode != Mode.SEATED:
 		return
 	var van: Van = vehicle
-	var door: Vector3 = van.release_driver()
+	var door: Vector3 = van.release(self)
 	var side: Vector3 = (door - van.global_position).slide(Vector3.UP)
 	var spots: Array[Vector3] = [door, van.global_position - side, door + side.normalized() * 0.7,
 			van.global_position + Vector3.UP * 2.6]
@@ -632,9 +632,10 @@ func _tick_seated() -> void:
 		_collider.disabled = false
 		mode = Mode.NORMAL
 		return
-	vehicle.throttle = _input.move.y
-	vehicle.steer = -_input.move.x      # вправо — к -X машины
-	vehicle.brake_input = 1.0 if _input.jump_held else 0.0
+	if vehicle.driver == self:
+		vehicle.throttle = _input.move.y
+		vehicle.steer = -_input.move.x      # вправо — к -X машины
+		vehicle.brake_input = 1.0 if _input.jump_held else 0.0
 	global_position = vehicle.to_global(seat_eye_local) - Vector3.UP * eye_height()
 	velocity = vehicle.linear_velocity
 	var ahead: Vector3 = vehicle.global_basis * (Basis(Vector3.UP, seat_look) * Vector3.BACK)

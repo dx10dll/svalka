@@ -8,8 +8,12 @@ extends Resource
 ## Центр масс ниже и чуть впереди середины: меньше валится в поворотах
 @export var center_of_mass := Vector3(0.0, 0.48, 0.25)
 @export_group("Мотор и тормоза")
-## Тяга на колёсах на первой «передаче», Н
-@export var engine_force: float = 6200.0
+## Тяга на всех колёсах вместе, Н
+@export var engine_force: float = 9000.0
+## Сколько секунд мотор терпит «газ в пол, а машина стоит», потом глохнет
+@export var stall_time: float = 1.8
+## Сколько крутит стартер
+@export var crank_time: float = 1.1
 ## Наибольшая скорость вперёд и назад, м/с
 @export var max_speed: float = 13.0
 @export var max_reverse_speed: float = 4.5
@@ -47,6 +51,11 @@ extends Resource
 @export var overload_penalty: float = 0.12
 ## Меньше этой доли тяга от перегруза не падает
 @export var overload_min_power: float = 0.3
+@export_group("Толкание")
+## Сила одного толкающего, Н (силы игроков складываются)
+@export var push_force: float = 1600.0
+## Сила, когда машина лежит на боку или на крыше: чтобы её можно было перевалить на колёса
+@export var flip_force: float = 9000.0
 @export_group("Свет")
 @export var headlight_energy: float = 14.0
 @export var headlight_range: float = 38.0

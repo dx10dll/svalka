@@ -299,6 +299,7 @@ func _run_van() -> void:
 	await _place(van.to_global(Vector3(-1.9, 0.0, -4.2)), turn)
 	_player.yaw = PI + 0.5 + turn
 	await _wait(1.5)
+	van.set_straps(true)
 	_cam.global_position = van.to_global(Vector3(-2.6, 1.9, -5.4))
 	_cam.look_at(van.to_global(Vector3(0, 1.1, -1.2)))
 	await _snap("van_cargo")

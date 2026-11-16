@@ -84,7 +84,10 @@ func _process(delta: float) -> void:
 		_dot.visible = false
 		_charge.visible = false
 		_info.offset_top = 230.0     # за рулём надпись внизу: не закрывает дорогу
-		_info.text = "%d %s · %s\n%s" % [int(absf(van.forward_speed()) * 3.6), tr("UNIT_KMH"), _cargo_line(van), tr("HUD_VAN_LEAVE")]
+		var hint: String = tr("HUD_VAN_LEAVE") if van.driver == _player else tr("HUD_VAN_LEAVE_PASSENGER")
+		if van.stalled and van.driver == _player:
+			hint = tr("HUD_VAN_STALLED")
+		_info.text = "%d %s · %s\n%s" % [int(absf(van.forward_speed()) * 3.6), tr("UNIT_KMH"), _cargo_line(van), hint]
 		return
 	_dot.visible = true
 	_info.offset_top = 26.0
@@ -100,6 +103,7 @@ func _process(delta: float) -> void:
 		_info.text = _cargo_line(_grab.focus_van)
 		if not _grab.focus_action.is_empty():
 			_info.text += "\n" + tr(_grab.focus_action["hint"])
+		_info.text += "\n" + tr("HINT_VAN_PUSH")
 	else:
 		_info.text = ""
 	_charge.visible = _grab.throw_charge > 0.02
