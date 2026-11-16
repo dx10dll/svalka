@@ -115,6 +115,59 @@ func _run() -> void:
 	_check(int(saved.get("night", 0)) == 2 and int(saved.get("money", 0)) == 400, "сохранена вторая ночь и касса")
 	Save.write({})
 
+	# 6. гараж и лавка
+	Game.run = null
+	Game.start_run(false)
+	Game.run.money = 2000
+	var garage: Node3D = (load("res://scenes/game/garage.tscn") as PackedScene).instantiate()
+	garage.set(&"auto_advance", false)
+	add_child(garage)
+	await _wait(1.0)
+	var grun: RunState = garage.get(&"run")
+	var gvan: Van = garage.get(&"van")
+	player = garage.find_child("Player", true, false)
+	input = PlayerInput.new()
+	player.scripted_input = input
+	_check(Game.phase == Game.Phase.GARAGE and grun == Game.run and gvan != null, "гараж: фаза, забег, буханка на месте")
+	_check((garage.get(&"_board") as Label3D).text.contains("\n") and (garage.get(&"_board") as Label3D).text.contains(Fmt.rub(2000)),
+			"доска показывает норму и кассу")
+	_check(is_equal_approx(gvan.feel.capacity, 800.0), "без улучшений грузоподъёмность 800 кг")
+	var items: Array[ShopItem] = ShopDb.all()
+	_check(items.size() == 3 and items[0].price > 0 and tr(items[0].name_key) != items[0].name_key, "в лавке %d товара с названиями" % items.size())
+	# покупка через E у ящика
+	var crate: Node3D = garage.get_node(^"Shop_springs")
+	player.global_position = crate.global_position + Vector3(-1.5, -0.4, 0.0)
+	to = crate.global_position - (player.global_position + Vector3.UP * player.eye_height())
+	player.yaw = atan2(-to.x, -to.z)
+	player.pitch = atan2(to.y, Vector2(to.x, to.z).length())
+	player.velocity = Vector3.ZERO
+	await _wait(0.4)
+	_check(player.grab.focus_use == crate and str(player.grab.focus_action.get("text", "")).contains(Fmt.rub(1500)),
+			"у ящика подсказка с ценой: «%s»" % player.grab.focus_action.get("text", ""))
+	input.interact_pressed = true
+	await get_tree().physics_frame
+	input.interact_pressed = false
+	await _wait(0.2)
+	_check(grun.has_upgrade(&"springs") and grun.money == 500, "купили рессоры, в кассе 500")
+	_check(is_equal_approx(gvan.feel.capacity, 1100.0), "грузоподъёмность стала 1100 кг")
+	_check(not garage.call(&"buy", items[1]) and not grun.has_upgrade(&"tyres"), "на резину денег не хватает")
+	_check(not garage.call(&"buy", items[0]) and grun.money == 500, "второй раз то же не купить")
+	await _wait(2.0)
+	_check(gvan.global_basis.y.y > 0.99 and gvan.global_position.y > 0.03 and gvan.global_position.y < 0.16, "машина с новыми рессорами стоит ровно и выше (на %.2f м)" % gvan.global_position.y)
+	saved = Save.read().get("run", {})
+	_check((saved.get("upgrades", []) as Array).has("springs"), "покупка сохранена")
+	garage.call(&"leave")
+	_check(garage.get(&"leaving"), "ворота: выезд на свалку")
+	garage.queue_free()
+	await _wait(0.3)
+	# улучшение доезжает до ночи
+	night = (load("res://scenes/game/night.tscn") as PackedScene).instantiate()
+	night.set(&"auto_advance", false)
+	add_child(night)
+	await _wait(0.3)
+	_check(is_equal_approx((night.get(&"van") as Van).feel.capacity, 1100.0), "на свалке буханка с купленными рессорами")
+	Save.write({})
+
 	print("Тесты ночи: прошло %d, провалено %d" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 

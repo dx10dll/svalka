@@ -31,6 +31,8 @@ var passenger: PlayerController
 var stalled: bool = false
 ## Груз притянут ремнями к кузову
 var strapped: bool = false
+## Поставленные улучшения
+var upgrades: Array[StringName] = []
 var engine_on: bool = false
 var headlights_on: bool = false
 var doors_open: bool = false
@@ -315,6 +317,42 @@ func set_headlights(on: bool) -> void:
 	headlights_on = on
 	for light: SpotLight3D in _lights:
 		light.visible = on
+
+
+## Поставить улучшения из лавки (id товаров). Числа — в VanFeel.
+func apply_upgrades(ids: Array[StringName]) -> void:
+	feel = feel.duplicate()
+	if ids.has(&"springs"):
+		feel.capacity += feel.springs_capacity_bonus
+		feel.suspension_stiffness *= feel.springs_stiffness_mult
+		# жёсткие рессоры меньше проседают: машина заметно приподнимается (около 10 см)
+		for wheel: VehicleWheel3D in _wheels:
+			wheel.suspension_stiffness = feel.suspension_stiffness
+	if ids.has(&"tyres"):
+		feel.wheel_friction *= feel.tyres_grip_mult
+		feel.engine_force *= feel.tyres_force_mult
+		for wheel: VehicleWheel3D in _wheels:
+			wheel.wheel_friction_slip = feel.wheel_friction
+	if ids.has(&"searchlight") and not has_node(^"Searchlight"):
+		var light := SpotLight3D.new()
+		light.name = "Searchlight"
+		light.light_color = Color(0.95, 0.97, 1.0)
+		light.light_energy = feel.searchlight_energy
+		light.spot_range = feel.searchlight_range
+		light.spot_angle = feel.searchlight_angle_deg
+		light.shadow_enabled = true
+		light.position = Vector3(0.0, 2.3, 1.2)
+		light.rotation = Vector3(deg_to_rad(-9.0), PI, 0.0)
+		light.visible = headlights_on
+		add_child(light)
+		_lights.append(light)
+		var lamp := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.5, 0.16, 0.2)
+		lamp.mesh = box
+		lamp.position = light.position - Vector3(0.0, 0.08, 0.1)
+		add_child(lamp)
+	upgrades = ids.duplicate()
 
 
 func toggle_doors() -> void:

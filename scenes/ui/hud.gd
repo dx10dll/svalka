@@ -106,7 +106,7 @@ func _process(delta: float) -> void:
 		_info.text += "\n" + tr("HINT_VAN_PUSH")
 	elif _grab.focus_use != null and not _grab.focus_action.is_empty():
 		_dot.color = Color(1.0, 0.75, 0.35)
-		_info.text = tr(_grab.focus_action["hint"])
+		_info.text = _grab.focus_action.get("text", tr(_grab.focus_action.get("hint", "")))
 	else:
 		_info.text = ""
 	_charge.visible = _grab.throw_charge > 0.02

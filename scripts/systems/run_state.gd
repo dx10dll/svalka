@@ -18,6 +18,8 @@ var earned: int = 0
 var outcome: Outcome = Outcome.RUNNING
 ## Смешная статистика ночи: имя -> число
 var stats: Dictionary[StringName, int] = {}
+## Купленные улучшения буханки (id товаров лавки)
+var upgrades: Array[StringName] = []
 
 
 func _init(cfg: EconomyConfig, player_count: int = 1, seed_value: int = 1) -> void:
@@ -72,12 +74,30 @@ func next_night() -> void:
 	outcome = Outcome.RUNNING
 
 
+func has_upgrade(id: StringName) -> bool:
+	return upgrades.has(id)
+
+
+## Купить товар лавки из кассы. false — не хватает денег или уже куплено.
+func buy(item: ShopItem) -> bool:
+	if has_upgrade(item.id) or money < item.price:
+		return false
+	money -= item.price
+	upgrades.append(item.id)
+	return true
+
+
 func to_dict() -> Dictionary:
-	return {"seed": run_seed, "night": night, "money": money, "players": players}
+	var ids: Array[String] = []
+	for id: StringName in upgrades:
+		ids.append(String(id))
+	return {"seed": run_seed, "night": night, "money": money, "players": players, "upgrades": ids}
 
 
 static func from_dict(cfg: EconomyConfig, d: Dictionary) -> RunState:
 	var run := RunState.new(cfg, int(d.get("players", 1)), int(d.get("seed", 1)))
 	run.night = clampi(int(d.get("night", 1)), 1, cfg.nights())
 	run.money = int(d.get("money", 0))
+	for id: Variant in d.get("upgrades", []):
+		run.upgrades.append(StringName(str(id)))
 	return run

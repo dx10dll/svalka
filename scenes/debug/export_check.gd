@@ -27,6 +27,10 @@ func _ready() -> void:
 	if run.quota() != 1350 or run.economy.night_seconds < 60.0:
 		print("  ПРОВАЛ: экономика не загрузилась (норма %d)" % run.quota())
 		failed += 1
+	if ShopDb.all().size() < 3 or ShopDb.all()[0] == null or ShopDb.all()[0].price <= 0 \
+			or load("res://scenes/game/garage.tscn") == null:
+		print("  ПРОВАЛ: лавка или гараж не загрузились")
+		failed += 1
 	if load("res://scenes/game/night.tscn") == null:
 		print("  ПРОВАЛ: нет сцены ночи")
 		failed += 1

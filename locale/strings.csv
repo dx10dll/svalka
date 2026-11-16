@@ -79,3 +79,19 @@ STAT_BROKEN,Разбито вещей: %d,Things broken: %d
 STAT_FALLS,Падений: %d,Falls: %d
 STAT_SOLD,Сдано вещей: %d,Items sold: %d
 SCENE_NIGHT,Ночь (забег),Night (run)
+SCENE_GARAGE,Гараж (начало забега),Garage (run start)
+GARAGE_BOARD,"НОЧЬ %d ИЗ %d\nНорма: %s\nКасса: %s","NIGHT %d OF %d\nQuota: %s\nCash: %s"
+GARAGE_GATE,НА СВАЛКУ,TO THE DUMP
+GARAGE_HINT_LEAVE,E — ехать на свалку (ночь %d · норма %s),E to drive to the dump (night %d · quota %s)
+SHOP_TITLE,ЛАВКА БАРЫГИ,THE FENCE'S SHOP
+SHOP_BOUGHT,КУПЛЕНО,BOUGHT
+SHOP_HINT_BUY,E — купить: %s за %s,E to buy: %s for %s
+SHOP_HINT_POOR,%s: не хватает %s,%s: %s short
+SHOP_HINT_BOUGHT,%s: уже стоит на буханке,%s: already fitted
+SHOP_SPRINGS,Усиленные рессоры,Heavy springs
+SHOP_SPRINGS_DESC,+300 кг груза,+300 kg cargo
+SHOP_TYRES,Резина-вездеход,Mud tyres
+SHOP_TYRES_DESC,цепче и тянет сильнее,more grip and pull
+SHOP_SEARCHLIGHT,Прожектор на крышу,Roof searchlight
+SHOP_SEARCHLIGHT_DESC,светит далеко вперёд,lights far ahead
+HINT_GARAGE,"Гараж: на стене доска с нормой и лавка (E у ящика — купить) · E у ворот — ехать на свалку","Garage: the quota board and the shop are on the wall (E at a crate to buy) · E at the gate to drive to the dump"

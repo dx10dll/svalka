@@ -56,6 +56,17 @@ extends Resource
 @export var push_force: float = 1600.0
 ## Сила, когда машина лежит на боку или на крыше: чтобы её можно было перевалить на колёса
 @export var flip_force: float = 9000.0
+@export_group("Улучшения из лавки")
+## Усиленные рессоры: прибавка к грузоподъёмности, кг, и во сколько раз жёстче
+@export var springs_capacity_bonus: float = 300.0
+@export var springs_stiffness_mult: float = 1.35
+## Резина-вездеход: множители сцепления и тяги
+@export var tyres_grip_mult: float = 1.5
+@export var tyres_force_mult: float = 1.2
+## Прожектор на крыше
+@export var searchlight_energy: float = 22.0
+@export var searchlight_range: float = 60.0
+@export var searchlight_angle_deg: float = 48.0
 @export_group("Свет")
 @export var headlight_energy: float = 14.0
 @export var headlight_range: float = 38.0

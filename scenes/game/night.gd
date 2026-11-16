@@ -6,6 +6,7 @@ extends "res://scenes/debug/playground_dump.gd"
 signal night_finished(outcome: RunState.Outcome)
 
 const SIREN_EVERY: float = 9.0
+const GARAGE_SCENE: String = "res://scenes/game/garage.tscn"
 
 ## Тесты выключают: тогда после итога сцена сама не перезагружается
 var auto_advance: bool = true
@@ -41,6 +42,7 @@ func _populate() -> void:
 	Game.night = run.night
 	Game.night_time = 0.0
 	Game.set_phase(Game.Phase.LANDFILL)
+	van.apply_upgrades(run.upgrades)
 	yard = ScrapYard.new()
 	yard.name = "Yard"
 	yard.position = site.gate_position + Vector3(-7.5, 0.0, 9.0)
@@ -189,4 +191,4 @@ func advance() -> void:
 		Game.start_run(false)
 	Game.save_run()
 	get_tree().node_added.disconnect(_on_node_added)
-	get_tree().reload_current_scene()
+	get_tree().change_scene_to_file.call_deferred(GARAGE_SCENE)
